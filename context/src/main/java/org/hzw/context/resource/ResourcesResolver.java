@@ -3,18 +3,17 @@ package org.hzw.context.resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 
 /**
@@ -48,17 +47,17 @@ public class ResourcesResolver {
             URL url = resources.nextElement();
             URI uri = url.toURI();
 
-            Files.walk(Path.of(uri))
-                    .filter(Files::isRegularFile).forEach(p -> {
-                        if (p.toString().endsWith(".class")) {
-                            String path = replaceSlashToSpot(p.toString());
-                            path = path.substring(path.indexOf(replaceSlashToSpot(this.basePackage)));
-                            Resource r = new Resource(path);
-                            R apply = mapper.apply(r);
-                            list.add(apply);
-                        }
-                    });
-
+            try (Stream<Path> walk = Files.walk(Path.of(uri))) {
+                walk.filter(Files::isRegularFile).forEach(p -> {
+                    if (p.toString().endsWith(".class")) {
+                        String path = replaceSlashToSpot(p.toString());
+                        path = path.substring(path.indexOf(replaceSlashToSpot(this.basePackage)));
+                        Resource r = new Resource(path);
+                        R apply = mapper.apply(r);
+                        list.add(apply);
+                    }
+                });
+            }
         }
 
         return list;
