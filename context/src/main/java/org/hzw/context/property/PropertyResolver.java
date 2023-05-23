@@ -9,7 +9,7 @@ import java.util.Set;
  * @author hzw
  */
 public class PropertyResolver {
-    private Map<String, String> properties = new HashMap<>();
+    private final Map<String, String> properties = new HashMap<>();
 
 
     public PropertyResolver() {
@@ -30,8 +30,21 @@ public class PropertyResolver {
             return properties.get(key);
         }
 
-        return properties.getOrDefault(propertyExpr.getKey(), propertyExpr.getDefaultValue());
+        String value = properties.getOrDefault(propertyExpr.getKey(), propertyExpr.getDefaultValue());
+        if (value != null) {
+            // 也许包含嵌套表达式: ${a.b:${c.d:e}}
+            return parseValue(value);
+        }
+
+        return null;
     }
+
+
+    public String getProperty(String key, String defaultValue) {
+        String value = getProperty(key);
+        return value == null ? defaultValue : null;
+    }
+
 
     private PropertyExpr parsePropertyExpr(String key) {
         if (key.startsWith("${") && key.endsWith("}")) {
@@ -44,5 +57,14 @@ public class PropertyResolver {
             }
         }
         return null;
+    }
+
+    private String parseValue(String value) {
+        PropertyExpr propertyExpr = parsePropertyExpr(value);
+        if (propertyExpr == null) {
+            return value;
+        }
+
+        return getProperty(propertyExpr.getKey(), propertyExpr.getDefaultValue());
     }
 }
