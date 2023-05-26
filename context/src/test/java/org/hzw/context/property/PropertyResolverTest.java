@@ -24,9 +24,14 @@ public class PropertyResolverTest {
         properties.load(Files.newInputStream(Path.of(resource.toURI())));
         var resolver = new PropertyResolver(properties);
 
-        assertEquals(properties.getProperty("student.name"), resolver.getProperty("student.name"));
-        assertEquals(properties.getProperty("student.name"), resolver.getProperty("${student.name}"));
-        assertEquals(properties.getProperty("student.name"), resolver.getProperty("${student.name:noop}"));
-        assertEquals(properties.getProperty("teacher.name"), resolver.getProperty("${boss.name:${teacher.name}}"));
+        assertEquals(properties.getProperty("student.name"), resolver.getProperty("student.name", String.class));
+        assertEquals(properties.getProperty("student.name"), resolver.getProperty("${student.name}", String.class));
+        assertEquals(properties.getProperty("student.name"), resolver.getProperty("${student.name:noop}", String.class));
+        assertEquals(properties.getProperty("teacher.name"), resolver.getProperty("${boss.name:${teacher.name}}", String.class));
+
+        assertEquals(Integer.valueOf(properties.getProperty("student.age")), resolver.getProperty("student.age", Integer.class));
+        assertEquals(Integer.valueOf(properties.getProperty("student.age")), resolver.getProperty("${student.age}", Integer.class));
+        assertEquals(Integer.valueOf(properties.getProperty("student.age")), resolver.getProperty("${student.age:noop}", Integer.class));
+        assertEquals(Integer.valueOf(properties.getProperty("teacher.age")), resolver.getProperty("${boss.age:${teacher.age}}", Integer.class));
     }
 }
