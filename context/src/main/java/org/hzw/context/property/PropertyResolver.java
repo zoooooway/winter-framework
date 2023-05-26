@@ -6,6 +6,8 @@ import java.util.Properties;
 import java.util.Set;
 
 /**
+ * 注入属性的解析器，支持普通键值解析和嵌套键值的解析
+ *
  * @author hzw
  */
 public class PropertyResolver {
@@ -20,7 +22,7 @@ public class PropertyResolver {
         this.properties.putAll(System.getenv());
         Set<String> keys = props.stringPropertyNames();
         for (String k : keys) {
-            this.properties.put(k, properties.get(k));
+            this.properties.put(k, props.getProperty(k));
         }
     }
 
@@ -32,7 +34,7 @@ public class PropertyResolver {
 
         String value = properties.getOrDefault(propertyExpr.getKey(), propertyExpr.getDefaultValue());
         if (value != null) {
-            // 也许包含嵌套表达式: ${a.b:${c.d:e}}
+            // 也许包含嵌套表达式, 比如: "${a.b:${c.d:e}}"
             return parseValue(value);
         }
 
@@ -42,7 +44,7 @@ public class PropertyResolver {
 
     public String getProperty(String key, String defaultValue) {
         String value = getProperty(key);
-        return value == null ? defaultValue : null;
+        return value == null ? defaultValue : value;
     }
 
 
@@ -51,7 +53,7 @@ public class PropertyResolver {
             int i = key.indexOf(":");
             if (i == -1) {
                 // 没有默认值
-                return new PropertyExpr(key, null);
+                return new PropertyExpr(key.substring(2, key.length() - 1), null);
             } else {
                 return new PropertyExpr(key.substring(2, i), key.substring(i + 1, key.length() - 1));
             }
