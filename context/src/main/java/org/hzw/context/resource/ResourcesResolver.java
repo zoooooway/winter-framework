@@ -35,10 +35,11 @@ public class ResourcesResolver {
      * @return class name列表
      */
     public <R> List<R> scan(Function<Resource, R> mapper) throws IOException, URISyntaxException {
+        String basePackagePath = this.basePackage.replace(".", "/");
         List<R> list = new ArrayList<>();
 
         ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
-        Enumeration<URL> resources = contextClassLoader.getResources(this.basePackage);
+        Enumeration<URL> resources = contextClassLoader.getResources(basePackagePath);
         if (resources == null) {
             return list;
         }
@@ -51,7 +52,7 @@ public class ResourcesResolver {
                 walk.filter(Files::isRegularFile).forEach(p -> {
                     if (p.toString().endsWith(".class")) {
                         String path = replaceSlashToSpot(p.toString());
-                        path = path.substring(path.indexOf(replaceSlashToSpot(this.basePackage)));
+                        path = path.substring(path.indexOf(this.basePackage));
                         Resource r = new Resource(path);
                         R apply = mapper.apply(r);
                         list.add(apply);

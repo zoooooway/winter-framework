@@ -5,7 +5,7 @@ package org.hzw.context.resource;
  */
 public class Resource {
 
-    private String relativePath;
+    private final String relativePath;
 
     public Resource(String relativePath) {
         this.relativePath = relativePath;

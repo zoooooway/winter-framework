@@ -1,7 +1,6 @@
-package org.hzw.context;
+package org.hzw.context.resource;
 
 import org.junit.jupiter.api.Test;
-import org.hzw.context.resource.ResourcesResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
