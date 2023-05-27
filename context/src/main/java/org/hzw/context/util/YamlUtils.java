@@ -21,6 +21,14 @@ import java.util.Set;
  * @author hzw
  */
 public class YamlUtils {
+
+    /**
+     * 加载指定的yaml文件，解析为map
+     * @param path
+     * @return
+     * @throws IOException
+     * @throws URISyntaxException
+     */
     public Map<String, Object> loadYaml(String path) throws IOException, URISyntaxException {
         var loaderOptions = new LoaderOptions();
         var dumperOptions = new DumperOptions();
@@ -40,8 +48,14 @@ public class YamlUtils {
         return map;
     }
 
-    void plain(Object node, String prefix, Map<String, Object> map) {
-
+    /**
+     * 将给定树形结构展开，放入map中
+     *
+     * @param node
+     * @param prefix
+     * @param map
+     */
+    private void plain(Object node, String prefix, Map<String, Object> map) {
         if (node instanceof Map) {
             Set<? extends Map.Entry<?, ?>> entries = ((Map<?, ?>) node).entrySet();
             for (var v : entries) {
