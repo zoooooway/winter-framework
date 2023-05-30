@@ -5,3 +5,7 @@ student:
 teacher:
   name: 大明
   age: 33
+
+Dog:
+  name: hash
+  age: 6
