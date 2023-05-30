@@ -1,5 +1,7 @@
 package org.hzw.context.property;
 
+import jakarta.annotation.Nullable;
+
 import java.time.*;
 import java.util.*;
 import java.util.function.Function;
@@ -54,10 +56,14 @@ public class PropertyResolver {
 
     }
 
+    @Nullable
     public <T> T getProperty(String key, Class<T> targetType) {
         PropertyExpr propertyExpr = parsePropertyExpr(key);
         if (propertyExpr == null) {
             String val = properties.get(key);
+            if (val == null) {
+                return null;
+            }
             Function<String, Object> convertFunc = converters.get(targetType);
             return (T) convertFunc.apply(val);
         }
@@ -72,12 +78,21 @@ public class PropertyResolver {
     }
 
 
+    @Nullable
     public <T> T getProperty(String key, String defaultValue, Class<T> targetType) {
         Object property = getProperty(key, targetType);
-        return (T) (property == null ? converters.get(targetType).apply(defaultValue) : property);
+        if (property != null) {
+            return (T) property;
+        }
+
+        if (defaultValue != null) {
+            return (T) converters.get(targetType).apply(defaultValue);
+        }
+
+        return null;
     }
 
-
+    @Nullable
     private PropertyExpr parsePropertyExpr(String key) {
         if (key.startsWith("${") && key.endsWith("}")) {
             int i = key.indexOf(":");

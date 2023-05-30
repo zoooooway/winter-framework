@@ -28,6 +28,7 @@ public class PropertyResolverTest {
         assertEquals(properties.getProperty("student.name"), resolver.getProperty("${student.name}", String.class));
         assertEquals(properties.getProperty("student.name"), resolver.getProperty("${student.name:noop}", String.class));
         assertEquals(properties.getProperty("teacher.name"), resolver.getProperty("${boss.name:${teacher.name}}", String.class));
+        assertEquals("man", resolver.getProperty("${boss.gender:${teacher.gender:man}}", String.class));
 
         assertEquals(Integer.valueOf(properties.getProperty("student.age")), resolver.getProperty("student.age", Integer.class));
         assertEquals(Integer.valueOf(properties.getProperty("student.age")), resolver.getProperty("${student.age}", Integer.class));
