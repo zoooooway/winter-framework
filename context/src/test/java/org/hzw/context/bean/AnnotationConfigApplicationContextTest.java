@@ -21,11 +21,11 @@ public class AnnotationConfigApplicationContextTest {
 
     @Test
     public void testScan() throws IOException, URISyntaxException, ClassNotFoundException {
-        PropertyResolver propertyResolver = new PropertyResolver();
         Properties properties = new Properties();
         URL resource = AnnotationConfigApplicationContextTest.class.getClassLoader().getResource("test.properties");
         assert resource != null;
         properties.load(Files.newInputStream(Path.of(resource.toURI())));
+        PropertyResolver propertyResolver = new PropertyResolver(properties);
         var context = new AnnotationConfigApplicationContext(ScanApplication.class, propertyResolver);
         Map<String, BeanDefinition> beans = context.beans;
         beans.forEach((key, value) -> log.debug(value.toString()));

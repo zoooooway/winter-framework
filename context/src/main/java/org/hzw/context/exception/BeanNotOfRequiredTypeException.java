@@ -11,4 +11,8 @@ public class BeanNotOfRequiredTypeException extends BeansException {
     public BeanNotOfRequiredTypeException(String message, Throwable t) {
         super(message, t);
     }
+
+    public BeanNotOfRequiredTypeException(Throwable t) {
+        super(t);
+    }
 }

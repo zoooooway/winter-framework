@@ -5,12 +5,12 @@ import java.lang.annotation.*;
 /**
  * @author hzw
  */
-@Target({ElementType.FIELD, ElementType.PARAMETER})
+@Target({ElementType.FIELD, ElementType.METHOD, ElementType.PARAMETER})
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
 public @interface Value {
     /**
-     * 是否必须注入此依赖
+     * 属性键
      */
-    String key() default "";
+    String value();
 }

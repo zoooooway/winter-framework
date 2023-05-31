@@ -11,4 +11,8 @@ public class UnsatisfiedDependencyException extends BeansException {
     public UnsatisfiedDependencyException(String message, Throwable t) {
         super(message, t);
     }
+
+    public UnsatisfiedDependencyException(Throwable t) {
+        super(t);
+    }
 }
