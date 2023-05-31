@@ -2,6 +2,7 @@ package org.hzw.context.bean;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
+import java.util.Objects;
 
 /**
  * bean定义信息，包含实例化bean的全部信息，便于后续创建Bean、设置依赖、调用初始化方法等操作
@@ -21,7 +22,7 @@ public class BeanDefinition {
     // 构造方法/null:
     Constructor<?> constructor;
 
-    // 工厂方法名称/null:
+    // 工厂名称(需要借助此类来调用factoryMethod)/null
     String factoryName;
 
     // 工厂方法/null:
@@ -184,5 +185,18 @@ public class BeanDefinition {
                 ", initMethod=" + initMethod +
                 ", destroyMethod=" + destroyMethod +
                 '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        BeanDefinition that = (BeanDefinition) o;
+        return order == that.order && primary == that.primary && Objects.equals(name, that.name) && Objects.equals(beanClass, that.beanClass) && Objects.equals(instance, that.instance) && Objects.equals(constructor, that.constructor) && Objects.equals(factoryName, that.factoryName) && Objects.equals(factoryMethod, that.factoryMethod) && Objects.equals(initMethodName, that.initMethodName) && Objects.equals(destroyMethodName, that.destroyMethodName) && Objects.equals(initMethod, that.initMethod) && Objects.equals(destroyMethod, that.destroyMethod);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(name, beanClass, instance, constructor, factoryName, factoryMethod, order, primary, initMethodName, destroyMethodName, initMethod, destroyMethod);
     }
 }

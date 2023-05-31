@@ -16,4 +16,11 @@ public class Fish {
     public void setName(String name) {
         this.name = name;
     }
+
+    @Override
+    public String toString() {
+        return "Fish{" +
+                "name='" + name + '\'' +
+                '}';
+    }
 }

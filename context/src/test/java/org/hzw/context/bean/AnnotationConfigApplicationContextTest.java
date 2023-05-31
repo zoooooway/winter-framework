@@ -2,6 +2,8 @@ package org.hzw.context.bean;
 
 import org.hzw.context.property.PropertyResolver;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -15,6 +17,7 @@ import java.util.Properties;
  * @author hzw
  */
 public class AnnotationConfigApplicationContextTest {
+    private Logger log = LoggerFactory.getLogger(getClass());
 
     @Test
     public void testScan() throws IOException, URISyntaxException, ClassNotFoundException {
@@ -25,6 +28,6 @@ public class AnnotationConfigApplicationContextTest {
         properties.load(Files.newInputStream(Path.of(resource.toURI())));
         var context = new AnnotationConfigApplicationContext(ScanApplication.class, propertyResolver);
         Map<String, BeanDefinition> beans = context.beans;
-        beans.forEach((key, value) -> System.out.println(value));
+        beans.forEach((key, value) -> log.debug(value.toString()));
     }
 }

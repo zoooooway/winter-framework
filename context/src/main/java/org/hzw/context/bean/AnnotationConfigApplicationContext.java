@@ -149,14 +149,14 @@ public class AnnotationConfigApplicationContext {
                 Configuration configuration = findAnnotation(clazz, Configuration.class);
                 if (configuration != null) {
                     // 如果是@Configuration所标记的类，那么需要扫描类中包含的@Bean标记的方法
-                    scanFactoryMethod(name2bdf, clazz);
+                    scanFactoryMethod(name2bdf, bdf.getName(), clazz);
                 }
             }
         }
         return name2bdf;
     }
 
-    private void scanFactoryMethod(Map<String, BeanDefinition> name2bdf, Class<?> clazz) {
+    private void scanFactoryMethod(Map<String, BeanDefinition> name2bdf, String factoryBeanName, Class<?> clazz) {
         List<Method> beanMethods = findAnnotationMethods(clazz, Bean.class);
         if (!beanMethods.isEmpty()) {
             for (Method method : beanMethods) {
@@ -185,7 +185,7 @@ public class AnnotationConfigApplicationContext {
                         method.getReturnType(),
                         null,
                         null,
-                        method.getName(),
+                        factoryBeanName,
                         method,
                         getOrder(method),
                         checkIsPrimary(method),
@@ -318,10 +318,10 @@ public class AnnotationConfigApplicationContext {
         });
 
         // 创建其他普通Bean:
-        List<BeanDefinition> normalBeans = beans.values().stream().filter(bdf -> bdf.getInstance() != null).collect(Collectors.toList());
+        List<BeanDefinition> normalBeans = beans.values().stream().filter(bdf -> bdf.getInstance() == null).sorted(Comparator.comparing(BeanDefinition::getName)).collect(Collectors.toList());
         normalBeans.forEach(b -> {
             // 也许该bean已经在创建其他bean的时候创建好了
-            if (b.getInstance() != null) {
+            if (b.getInstance() == null) {
                 createEarlyBeanInstance(b);
             }
         });
@@ -379,14 +379,14 @@ public class AnnotationConfigApplicationContext {
 
                 // 查找依赖的BeanDefinition，如果指定了依赖的名称，直接使用名称查找，否则按类型查找
                 BeanDefinition beanDefinition;
-                if (name == null) {
+                if (name == null ||  "".equals(name)) {
                     beanDefinition = findBeanDefinition(parameters[i].getType());
                 } else {
                     beanDefinition = findBeanDefinition(name, parameters[i].getType());
                 }
 
                 if (beanDefinition == null && autowired.required()) {
-                    throw new UnsatisfiedDependencyException(String.format("Cannot find bean '%s': %s.", bdf.getName(), bdf.getBeanClass().getName()));
+                    throw new UnsatisfiedDependencyException(String.format("Cannot find bean '%s'", parameters[i].getType()));
                 }
 
                 if (beanDefinition == null) {
@@ -404,6 +404,35 @@ public class AnnotationConfigApplicationContext {
                 // 注入配置属性
                 args[i] = propertyResolver.getProperty(value.key(), parameters[i].getType());
             }
+        }
+
+        // 创建bean实例
+        if (bdf.getConstructor() != null) {
+            // 使用构造方法进行创建
+            Constructor<?> constructor = bdf.getConstructor();
+            Object obj = null;
+            try {
+                obj = constructor.newInstance(args);
+            } catch (Exception e) {
+                throw new BeanCreationException(String.format("Exception when create bean '%s': %s", bdf.getName(), bdf.getBeanClass().getName()), e);
+            }
+            bdf.setInstance(obj);
+        } else {
+            // @Bean 标注的实例，需要使用对应的 @Configuration 标注的类实例来调用方法
+            String factoryName = bdf.getFactoryName();
+            BeanDefinition factoryBdf = beans.get(factoryName);
+            Object factory = factoryBdf.getInstance();
+            if (factory == null) {
+                createEarlyBeanInstance(factoryBdf);
+            }
+            Method factoryMethod = bdf.getFactoryMethod();
+            Object obj = null;
+            try {
+                obj = factoryMethod.invoke(factory, args);
+            } catch (Exception e) {
+                throw new BeanCreationException(String.format("Exception when create bean '%s': %s", bdf.getName(), bdf.getBeanClass().getName()), e);
+            }
+            bdf.setInstance(obj);
         }
     }
 

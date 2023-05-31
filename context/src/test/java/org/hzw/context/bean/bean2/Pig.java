@@ -13,4 +13,11 @@ public class Pig {
     public void setName(String name) {
         this.name = name;
     }
+
+    @Override
+    public String toString() {
+        return "Pig{" +
+                "name='" + name + '\'' +
+                '}';
+    }
 }
