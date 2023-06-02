@@ -1,6 +1,7 @@
 package org.hzw.context.bean;
 
 import org.hzw.context.property.PropertyResolver;
+import org.hzw.context.util.YamlUtils;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,8 +27,15 @@ public class AnnotationConfigApplicationContextTest {
         assert resource != null;
         properties.load(Files.newInputStream(Path.of(resource.toURI())));
         PropertyResolver propertyResolver = new PropertyResolver(properties);
-        var context = new AnnotationConfigApplicationContext(ScanApplication.class, propertyResolver);
+
+        YamlUtils yamlUtils = new YamlUtils();
+        Map<String, Object> map = yamlUtils.loadYaml("test.yml");
+        PropertyResolver ymlPropertyResolver = new PropertyResolver(map);
+
+        var context = new AnnotationConfigApplicationContext(ScanApplication.class, ymlPropertyResolver);
         Map<String, BeanDefinition> beans = context.beans;
         beans.forEach((key, value) -> log.debug(value.toString()));
+
+        context.close();
     }
 }

@@ -6,6 +6,12 @@ teacher:
   name: 大明
   age: 33
 
-Dog:
+dog:
   name: hash
   age: 6
+
+pet:
+  from: china
+
+cat:
+  name: hellokitty

@@ -33,6 +33,15 @@ public class PropertyResolver {
         initializeConverters(converters);
     }
 
+    public PropertyResolver(Map<String, Object> props) {
+        this.properties.putAll(System.getenv());
+        Set<String> keys = props.keySet();
+        for (String k : keys) {
+            this.properties.put(k, props.get(k).toString());
+        }
+        initializeConverters(converters);
+    }
+
     private void initializeConverters(Map<Class<?>, Function<String, Object>> coverters) {
         // 基本数据类型
         coverters.put(int.class, Integer::parseInt);

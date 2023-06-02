@@ -52,6 +52,32 @@ public class AnnotationConfigApplicationContext {
 
         // 进行依赖注入
         dependencyInjection(beans);
+
+        // 进行调用初始化方法
+        initBeans();
+    }
+
+    private void initBeans() {
+        log.debug("init beans");
+        // 调用init方法:
+        this.beans.values().forEach(bdf -> {
+            try {
+                if (bdf.getInitMethod() != null) {
+                    bdf.getInitMethod().invoke(bdf.getInstance());
+
+                } else {
+                    String initMethodName = bdf.getInitMethodName();
+                    if (StringUtils.isEmpty(initMethodName)) {
+                        return;
+                    }
+                    Method method = bdf.getBeanClass().getMethod(initMethodName);
+                    method.invoke(bdf.getInstance());
+                }
+
+            } catch (Exception e) {
+                throw new BeanCreationException(e);
+            }
+        });
     }
 
     /**
@@ -60,74 +86,99 @@ public class AnnotationConfigApplicationContext {
     private void dependencyInjection(Map<String, BeanDefinition> beans) {
         beans.forEach((k, v) -> {
             // 依次找出当前类或父类中的方法或字段上存在的autowired注解
-            doInject(v);
-
+            log.debug("inject dependencies for '{}'", k);
+            injectMethodAndField(v.getBeanClass(), v.getInstance());
         });
-
     }
 
-    private void doInject(BeanDefinition bdf) {
+    private void injectMethodAndField(Class<?> clazz, Object instance) {
         try {
-            injectField(bdf.getBeanClass(), bdf.getInstance(), bdf.getName());
-            injectMethod(bdf.getBeanClass(), bdf.getInstance(), bdf.getName());
+            injectField(clazz, instance);
+            injectMethod(clazz, instance);
         } catch (Exception e) {
             throw new BeanCreationException(e);
         }
 
+        // 父类属性注入
+        Class<?> superclass = clazz.getSuperclass();
+        if (superclass != null) {
+            injectMethodAndField(superclass, instance);
+        }
     }
 
     /**
      * 注入属性
      */
-    private void injectMethod(Class<?> clazz, Object instance, String beanName) throws InvocationTargetException, IllegalAccessException {
+    private void injectMethod(Class<?> clazz, Object instance) throws InvocationTargetException, IllegalAccessException {
         Method[] declaredMethods = clazz.getDeclaredMethods();
         for (Method method : declaredMethods) {
-
-            Autowired autowired = findAnnotation(method, Autowired.class);
-            Value value = findAnnotation(method, Value.class);
-            if (autowired == null && value == null) {
+            // 检查方法参数上是否存在注入的注解
+            if (!hasAutowiredOrValueOnParameter(method)) {
                 continue;
             }
 
-            if (autowired != null && value != null) {
-                throw new BeanCreationException(String.format("Cannot specify both @Autowired and @Value when inject dependency '%s': %s.", clazz, method.getName()));
-            }
-
-            // 校验
+            // 校验方法是否可符合注入条件
             checkFieldOrMethod(method);
 
             Parameter[] parameters = method.getParameters();
-            if (parameters.length != 1) {
-                throw new BeanCreationException(String.format("Only support injection methods for setter '%s': %s", beanName, method.getName()));
-            }
-
-            if (autowired != null) {
-                // 查找依赖的BeanDefinition，如果指定了依赖的名称，直接使用名称查找，否则按类型查找
-                BeanDefinition beanDefinition;
-                String name = autowired.name();
-                if (StringUtils.isEmpty(name)) {
-                    beanDefinition = findBeanDefinition(parameters[0].getType());
-                } else {
-                    beanDefinition = findBeanDefinition(name, parameters[0].getType());
+            Object[] args = new Object[parameters.length];
+            for (int i = 0; i < parameters.length; i++) {
+                Autowired autowired = findAnnotation(parameters[i], Autowired.class);
+                Value value = findAnnotation(parameters[i], Value.class);
+                if (autowired == null && value == null) {
+                    continue;
                 }
 
-                if (beanDefinition == null) {
-                    if (autowired.required()) {
-                        throw new UnsatisfiedDependencyException(String.format("Cannot find bean '%s'", parameters[0].getType()));
+                if (autowired != null && value != null) {
+                    throw new BeanCreationException(String.format("Cannot specify both @Autowired and @Value when inject dependency  %s.", parameters[i].getName()));
+                }
+
+                Object property = null;
+                if (autowired != null) {
+                    // 查找依赖的BeanDefinition，如果指定了依赖的名称，直接使用名称查找，否则按类型查找
+                    BeanDefinition beanDefinition;
+                    String name = autowired.name();
+                    if (StringUtils.isEmpty(name)) {
+                        // 先使用参数的名称来进行查找
+                        // todo 默认class文件中不存储参数名称，需要使用 -parameters 启动命令来开启存储参数名称， 或者使用字节码框架来进行处理
+                        beanDefinition = findBeanDefinition(parameters[i].getName(), parameters[i].getType());
+                        if (beanDefinition == null) {
+                            // 使用类型查找
+                            beanDefinition = findBeanDefinition(parameters[i].getType());
+                        }
+                    } else {
+                        beanDefinition = findBeanDefinition(name, parameters[i].getType());
                     }
-                } else {
-                    injectProperty(instance, method, beanDefinition.getInstance());
+
+                    if (beanDefinition == null) {
+                        if (autowired.required()) {
+                            throw new UnsatisfiedDependencyException(String.format("Unable to find the required dependency '%s' for %s", parameters[i].getType(), clazz));
+                        }
+                    }
+                    property = beanDefinition.getInstance();
+
+                } else if (value != null) {
+                    String key = value.value();
+                    Class<?> type = parameters[i].getType();
+                    property = propertyResolver.getProperty(key, type);
                 }
+
+                args[i] = property;
             }
+            injectProperty(instance, method, args);
+        }
+    }
 
-            if (value != null) {
-                String key = value.value();
-                Class<?> type = parameters[0].getType();
-                Object property = propertyResolver.getProperty(key, type);
-
-                injectProperty(instance, method, property);
+    private boolean hasAutowiredOrValueOnParameter(Method method) {
+        Annotation[][] parameterAnnotations = method.getParameterAnnotations();
+        for (Annotation[] annos : parameterAnnotations) {
+            for (Annotation anno : annos) {
+                if (Autowired.class == anno.annotationType() || Value.class == anno.annotationType()) {
+                    return true;
+                }
             }
         }
+        return false;
     }
 
     /**
@@ -137,21 +188,15 @@ public class AnnotationConfigApplicationContext {
      * @param instance 需要注入的类的实例
      * @throws IllegalAccessException
      */
-    private void injectField(Class<?> clazz, Object instance, String beanName) throws IllegalAccessException, InvocationTargetException {
+    private void injectField(Class<?> clazz, Object instance) throws IllegalAccessException, InvocationTargetException {
         Field[] declaredFields = clazz.getDeclaredFields();
         for (Field field : declaredFields) {
             Autowired autowired = findAnnotation(field, Autowired.class);
             Value value = findAnnotation(field, Value.class);
-            if (autowired == null && value == null) {
+
+            if (check(clazz, field, autowired, value)) {
                 continue;
             }
-
-            if (autowired != null && value != null) {
-                throw new BeanCreationException(String.format("Cannot specify both @Autowired and @Value when inject dependency '%s': %s.", beanName, field.getName()));
-            }
-
-            // 校验
-            checkFieldOrMethod(field);
 
             if (autowired != null) {
                 // 查找依赖的BeanDefinition，如果指定了依赖的名称，直接使用名称查找，否则按类型查找
@@ -182,6 +227,20 @@ public class AnnotationConfigApplicationContext {
         }
     }
 
+    private boolean check(Class<?> clazz, Member member, Autowired autowired, Value value) {
+        if (autowired == null && value == null) {
+            return true;
+        }
+
+        if (autowired != null && value != null) {
+            throw new BeanCreationException(String.format("Cannot specify both @Autowired and @Value when inject dependency '%s': %s.", clazz.toString(), member.getName()));
+        }
+
+        // 校验
+        checkFieldOrMethod(member);
+        return false;
+    }
+
     private void injectProperty(Object obj, AccessibleObject accessibleObject, Object property) throws IllegalAccessException, InvocationTargetException {
         if (accessibleObject instanceof Field) {
             Field field = (Field) accessibleObject;
@@ -194,7 +253,7 @@ public class AnnotationConfigApplicationContext {
             if (!method.canAccess(obj)) {
                 method.setAccessible(true);
             }
-            method.invoke(obj, property);
+            method.invoke(obj, (Object[]) property);
         }
 
     }
@@ -648,6 +707,37 @@ public class AnnotationConfigApplicationContext {
         }
 
         return beanDefinition;
+    }
+
+    /**
+     * 关闭容器
+     */
+    public void close() {
+        log.debug("close container");
+        destroyBeans();
+    }
+
+    private void destroyBeans() {
+        log.debug("destroy beans");
+        // 调用destroy方法:
+        this.beans.values().forEach(bdf -> {
+            try {
+                if (bdf.getDestroyMethod() != null) {
+                    bdf.getDestroyMethod().invoke(bdf.getInstance());
+
+                } else {
+                    String destroyMethodName = bdf.getDestroyMethodName();
+                    if (StringUtils.isEmpty(destroyMethodName)) {
+                        return;
+                    }
+                    Method method = bdf.getBeanClass().getMethod(destroyMethodName);
+                    method.invoke(bdf.getInstance());
+                }
+
+            } catch (Exception e) {
+                throw new BeanCreationException(e);
+            }
+        });
     }
 
 }

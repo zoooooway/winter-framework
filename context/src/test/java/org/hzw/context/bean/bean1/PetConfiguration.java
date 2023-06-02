@@ -9,10 +9,24 @@ import org.hzw.context.annotation.Configuration;
 @Configuration
 public class PetConfiguration {
 
-    @Bean
+    @Bean(initMethod = "init", destroyMethod = "destroy")
     public Dog dog() {
         Dog dog = new Dog();
         dog.setName("hash");
         return dog;
+    }
+
+    @Bean
+    public Cat redCat() {
+        Cat cat = new Cat();
+        cat.setName("red");
+        return cat;
+    }
+
+    @Bean
+    public Cat buleCat() {
+        Cat cat = new Cat();
+        cat.setName("buleCat");
+        return cat;
     }
 }

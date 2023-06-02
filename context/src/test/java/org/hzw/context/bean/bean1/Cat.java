@@ -2,19 +2,23 @@ package org.hzw.context.bean.bean1;
 
 
 import org.hzw.context.annotation.Component;
+import org.hzw.context.annotation.Value;
+
+import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
 
 /**
  * @author hzw
  */
 @Component
-public class Cat {
+public class Cat extends Pet {
     private String name;
 
     public String getName() {
         return name;
     }
 
-    public void setName(String name) {
+    public void setName(@Value("${cat.name}") String name) {
         this.name = name;
     }
 
@@ -22,6 +26,16 @@ public class Cat {
     public String toString() {
         return "Cat{" +
                 "name='" + name + '\'' +
-                '}';
+                "} " + super.toString();
+    }
+
+    @PostConstruct
+    public void init() {
+        System.out.println("---------------------------init " + getClass().toString());
+    }
+
+    @PreDestroy
+    public void destroy() {
+        System.out.println("---------------------------destroy " + getClass().toString());
     }
 }
