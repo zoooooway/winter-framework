@@ -45,22 +45,20 @@ public class AnnotationConfigApplicationContext {
         createBeanInstance(beans);
 
         if (log.isDebugEnabled()) {
-            this.beans.values().forEach(def -> {
-                log.debug("bean initialized: {}", def);
-            });
+            this.beans.values().forEach(def -> log.debug("bean initialized: {}", def));
         }
 
         // 进行依赖注入
         dependencyInjection(beans);
 
         // 进行调用初始化方法
-        initBeans();
+        callBeansInitMethod();
     }
 
-    private void initBeans() {
-        log.debug("init beans");
+    private void callBeansInitMethod() {
         // 调用init方法:
         this.beans.values().forEach(bdf -> {
+            log.debug("call bean: '{}' init method", bdf.getName());
             try {
                 if (bdf.getInitMethod() != null) {
                     bdf.getInitMethod().invoke(bdf.getInstance());
@@ -525,9 +523,7 @@ public class AnnotationConfigApplicationContext {
      * Check and add bean definitions.
      */
     void addBeanDefinitions(Map<String, BeanDefinition> name2bdf, BeanDefinition bdf) {
-        if (log.isDebugEnabled()) {
-            log.debug("add BeanDefinition : {}", bdf.getName());
-        }
+        log.debug("add BeanDefinition : {}", bdf.getName());
         if (name2bdf.put(bdf.getName(), bdf) != null) {
             throw new BeanDefinitionException("Duplicate bean name: " + bdf.getName());
         }
@@ -638,7 +634,7 @@ public class AnnotationConfigApplicationContext {
         if (bdf.getConstructor() != null) {
             // 使用构造方法进行创建
             Constructor<?> constructor = bdf.getConstructor();
-            Object obj = null;
+            Object obj;
             try {
                 obj = constructor.newInstance(args);
             } catch (Exception e) {
@@ -654,7 +650,7 @@ public class AnnotationConfigApplicationContext {
                 createEarlyBeanInstance(factoryBdf);
             }
             Method factoryMethod = bdf.getFactoryMethod();
-            Object obj = null;
+            Object obj;
             try {
                 obj = factoryMethod.invoke(factory, args);
             } catch (Exception e) {
@@ -718,7 +714,6 @@ public class AnnotationConfigApplicationContext {
     }
 
     private void destroyBeans() {
-        log.debug("destroy beans");
         // 调用destroy方法:
         this.beans.values().forEach(bdf -> {
             try {
@@ -736,6 +731,8 @@ public class AnnotationConfigApplicationContext {
 
             } catch (Exception e) {
                 throw new BeanCreationException(e);
+            } finally {
+                log.debug("destroy bean: '{}' completed", bdf.getName());
             }
         });
     }
