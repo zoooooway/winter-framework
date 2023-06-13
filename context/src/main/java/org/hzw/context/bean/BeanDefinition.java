@@ -9,7 +9,7 @@ import java.util.Objects;
  *
  * @author hzw
  */
-public class BeanDefinition {
+public class BeanDefinition implements Comparable<BeanDefinition> {
     // 全局唯一的Bean Name:
     String name;
 
@@ -198,5 +198,14 @@ public class BeanDefinition {
     @Override
     public int hashCode() {
         return Objects.hash(name, beanClass, instance, constructor, factoryName, factoryMethod, order, primary, initMethodName, destroyMethodName, initMethod, destroyMethod);
+    }
+
+    @Override
+    public int compareTo(BeanDefinition def) {
+        int cmp = Integer.compare(this.order, def.order);
+        if (cmp != 0) {
+            return cmp;
+        }
+        return this.name.compareTo(def.name);
     }
 }

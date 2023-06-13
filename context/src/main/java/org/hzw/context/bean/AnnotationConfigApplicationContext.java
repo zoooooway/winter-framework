@@ -30,6 +30,7 @@ public class AnnotationConfigApplicationContext {
     protected final Map<String, BeanDefinition> beans;
     protected final Set<String> creatingBeanNames;
     protected final PropertyResolver propertyResolver;
+    protected final List<BeanPostProcessor> beanPostProcessors;
 
     public AnnotationConfigApplicationContext(Class<?> configClass, PropertyResolver propertyResolver) throws IOException, URISyntaxException, ClassNotFoundException {
         this.propertyResolver = propertyResolver;
@@ -41,6 +42,7 @@ public class AnnotationConfigApplicationContext {
 
         // 用于检测循环依赖的set
         this.creatingBeanNames = new HashSet<>();
+        this.beanPostProcessors = new ArrayList<>();
         // 创建bean实例
         createBeanInstance(beans);
 
@@ -53,6 +55,9 @@ public class AnnotationConfigApplicationContext {
 
         // 进行调用初始化方法
         callBeansInitMethod();
+
+        this.beans.values().forEach(this::doBeanPostProcessAfter);
+
     }
 
     private void callBeansInitMethod() {
@@ -85,8 +90,22 @@ public class AnnotationConfigApplicationContext {
         beans.forEach((k, v) -> {
             // 依次找出当前类或父类中的方法或字段上存在的autowired注解
             log.debug("inject dependencies for '{}'", k);
-            injectMethodAndField(v.getBeanClass(), v.getInstance());
+            injectMethodAndField(v.getBeanClass(), getProxiedInstance(v));
         });
+    }
+
+    /**
+     * 如果此bean被代理过，则返回其原始对象
+     */
+    private Object getProxiedInstance(BeanDefinition bdf) {
+        Object instance = bdf.getInstance();
+        for (int i = this.beanPostProcessors.size() - 1; i >= 0; i--) {
+            Object origin = beanPostProcessors.get(i).postProcessOnSetProperty(instance, bdf.getName());
+            if (origin != instance) {
+                instance = origin;
+            }
+        }
+        return instance;
     }
 
     private void injectMethodAndField(Class<?> clazz, Object instance) {
@@ -532,7 +551,7 @@ public class AnnotationConfigApplicationContext {
 
     private void createBeanInstance(Map<String, BeanDefinition> bdfs) {
         // 先找出工厂方法的BeanDefinition
-        bdfs.values().forEach(bdf -> {
+        bdfs.values().stream().sorted().forEach(bdf -> {
             if (bdf.getBeanClass() != null) {
                 if (isConfiguration(bdf)) {
                     // 创建configuration实例
@@ -541,8 +560,19 @@ public class AnnotationConfigApplicationContext {
             }
         });
 
+        // 创建BeanPostProcessor的Bean
+        bdfs.values().stream().sorted().forEach(bdf -> {
+            if (bdf.getBeanClass() != null) {
+                if (isBeanPostProcessor(bdf)) {
+                    // 创建BeanPostProcessor实例
+                    BeanPostProcessor beanPostProcessor = (BeanPostProcessor) createEarlyBeanInstance(bdf);
+                    beanPostProcessors.add(beanPostProcessor);
+                }
+            }
+        });
+
         // 创建其他普通Bean:
-        List<BeanDefinition> normalBeans = beans.values().stream().filter(bdf -> bdf.getInstance() == null).sorted(Comparator.comparing(BeanDefinition::getName)).collect(Collectors.toList());
+        List<BeanDefinition> normalBeans = beans.values().stream().filter(bdf -> bdf.getInstance() == null).sorted().collect(Collectors.toList());
         normalBeans.forEach(b -> {
             // 也许该bean已经在创建其他bean的时候创建好了
             if (b.getInstance() == null) {
@@ -557,10 +587,18 @@ public class AnnotationConfigApplicationContext {
         return configuration != null;
     }
 
+    private boolean isBeanPostProcessor(BeanDefinition bdf) {
+        Class<?> beanClass = bdf.getBeanClass();
+        if (BeanPostProcessor.class.isAssignableFrom(beanClass)) {
+            return true;
+        }
+        return false;
+    }
+
     /**
      * 创建一个Bean，但不进行字段和方法级别的注入。如果创建的Bean不是Configuration，则在构造方法中注入的依赖Bean会自动创建。
      */
-    private void createEarlyBeanInstance(BeanDefinition bdf) {
+    private Object createEarlyBeanInstance(BeanDefinition bdf) {
         log.debug("try to create bean: {}", bdf.getName());
         if (!creatingBeanNames.add(bdf.getName())) {
             // 循环依赖
@@ -631,10 +669,10 @@ public class AnnotationConfigApplicationContext {
         }
 
         // 创建bean实例
+        Object obj;
         if (bdf.getConstructor() != null) {
             // 使用构造方法进行创建
             Constructor<?> constructor = bdf.getConstructor();
-            Object obj;
             try {
                 obj = constructor.newInstance(args);
             } catch (Exception e) {
@@ -650,14 +688,37 @@ public class AnnotationConfigApplicationContext {
                 createEarlyBeanInstance(factoryBdf);
             }
             Method factoryMethod = bdf.getFactoryMethod();
-            Object obj;
             try {
                 obj = factoryMethod.invoke(factory, args);
             } catch (Exception e) {
                 throw new BeanCreationException(String.format("Exception when create bean '%s': %s", bdf.getName(), bdf.getBeanClass().getName()), e);
             }
-            bdf.setInstance(obj);
+
         }
+        bdf.setInstance(obj);
+
+        // 进行 BeanPostProcessor 的处理
+        doBeanPostProcessBefore(bdf);
+
+        return bdf.getInstance();
+    }
+
+    private void doBeanPostProcessBefore(BeanDefinition bdf) {
+        this.beanPostProcessors.forEach(beanPostProcessor -> {
+            Object processed = beanPostProcessor.postProcessBeforeInitialization(bdf.getInstance(), bdf.getName());
+            if (processed != bdf.getInstance()) {
+                bdf.setInstance(processed);
+            }
+        });
+    }
+
+    private void doBeanPostProcessAfter(BeanDefinition bdf) {
+        this.beanPostProcessors.forEach(beanPostProcessor -> {
+            Object processed = beanPostProcessor.postProcessAfterInitialization(bdf.getInstance(), bdf.getName());
+            if (processed != bdf.getInstance()) {
+                bdf.setInstance(processed);
+            }
+        });
     }
 
     /**
