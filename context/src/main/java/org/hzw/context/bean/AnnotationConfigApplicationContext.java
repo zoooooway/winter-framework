@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
  *
  * @author hzw
  */
-public class AnnotationConfigApplicationContext {
+public class AnnotationConfigApplicationContext implements ConfigurableApplicationContext {
     private final Logger log = LoggerFactory.getLogger(this.getClass());
 
     protected final Map<String, BeanDefinition> beans;
@@ -157,7 +157,7 @@ public class AnnotationConfigApplicationContext {
                     String name = autowired.name();
                     if (StringUtils.isEmpty(name)) {
                         // 先使用参数的名称来进行查找
-                        // todo 默认class文件中不存储参数名称，需要使用 -parameters 启动命令来开启存储参数名称， 或者使用字节码框架来进行处理
+                        // todo 默认class文件中不存储参数名称，需要使用 -parameters 编译命令来开启存储参数名称， 或者使用字节码框架来进行处理
                         beanDefinition = findBeanDefinition(parameters[i].getName(), parameters[i].getType());
                         if (beanDefinition == null) {
                             // 使用类型查找
@@ -555,7 +555,7 @@ public class AnnotationConfigApplicationContext {
             if (bdf.getBeanClass() != null) {
                 if (isConfiguration(bdf)) {
                     // 创建configuration实例
-                    createEarlyBeanInstance(bdf);
+                    createBeanAsEarlySingleton(bdf);
                 }
             }
         });
@@ -565,7 +565,7 @@ public class AnnotationConfigApplicationContext {
             if (bdf.getBeanClass() != null) {
                 if (isBeanPostProcessor(bdf)) {
                     // 创建BeanPostProcessor实例
-                    BeanPostProcessor beanPostProcessor = (BeanPostProcessor) createEarlyBeanInstance(bdf);
+                    BeanPostProcessor beanPostProcessor = (BeanPostProcessor) createBeanAsEarlySingleton(bdf);
                     beanPostProcessors.add(beanPostProcessor);
                 }
             }
@@ -576,7 +576,7 @@ public class AnnotationConfigApplicationContext {
         normalBeans.forEach(b -> {
             // 也许该bean已经在创建其他bean的时候创建好了
             if (b.getInstance() == null) {
-                createEarlyBeanInstance(b);
+                createBeanAsEarlySingleton(b);
             }
         });
 
@@ -598,7 +598,9 @@ public class AnnotationConfigApplicationContext {
     /**
      * 创建一个Bean，但不进行字段和方法级别的注入。如果创建的Bean不是Configuration，则在构造方法中注入的依赖Bean会自动创建。
      */
-    private Object createEarlyBeanInstance(BeanDefinition bdf) {
+    @Nonnull
+    @Override
+    public Object createBeanAsEarlySingleton(BeanDefinition bdf) {
         log.debug("try to create bean: {}", bdf.getName());
         if (!creatingBeanNames.add(bdf.getName())) {
             // 循环依赖
@@ -657,7 +659,7 @@ public class AnnotationConfigApplicationContext {
                 } else {
                     if (beanDefinition.getInstance() == null) {
                         // 递归创建此依赖
-                        createEarlyBeanInstance(beanDefinition);
+                        createBeanAsEarlySingleton(beanDefinition);
                     }
                     args[i] = beanDefinition.getInstance();
                 }
@@ -685,7 +687,7 @@ public class AnnotationConfigApplicationContext {
             BeanDefinition factoryBdf = beans.get(factoryName);
             Object factory = factoryBdf.getInstance();
             if (factory == null) {
-                createEarlyBeanInstance(factoryBdf);
+                createBeanAsEarlySingleton(factoryBdf);
             }
             Method factoryMethod = bdf.getFactoryMethod();
             try {
@@ -721,12 +723,19 @@ public class AnnotationConfigApplicationContext {
         });
     }
 
+
+    @Override
+    public List<BeanDefinition> findBeanDefinitions(Class<?> type) {
+        return this.beans.values().stream().filter(b -> type.isAssignableFrom(b.getBeanClass())).collect(Collectors.toList());
+    }
+
     /**
      * 按类型查找BeanDefinition，找不到返回空，找到多个BeanDefinition时返回被@Primary标记的，否则抛出异常
      */
     @Nullable
-    private BeanDefinition findBeanDefinition(Class<?> type) {
-        List<BeanDefinition> collect = beans.values().stream().filter(b -> type.isAssignableFrom(b.getBeanClass())).collect(Collectors.toList());
+    @Override
+    public BeanDefinition findBeanDefinition(Class<?> type) {
+        List<BeanDefinition> collect = this.beans.values().stream().filter(b -> type.isAssignableFrom(b.getBeanClass())).collect(Collectors.toList());
         if (collect.isEmpty()) {
             return null;
         }
@@ -748,11 +757,21 @@ public class AnnotationConfigApplicationContext {
     }
 
     /**
+     * 按名称查找BeanDefinition，找不到返回空，找到多个BeanDefinition时返回被@Primary标记的，否则抛出异常
+     */
+    @Nullable
+    @Override
+    public BeanDefinition findBeanDefinition(String name) {
+        return this.beans.get(name);
+    }
+
+    /**
      * 根据Name和Type查找BeanDefinition，如果Name不存在，返回null，如果Name存在，但Type不匹配，抛出异常。
      */
     @Nullable
-    private BeanDefinition findBeanDefinition(String name, Class<?> type) {
-        BeanDefinition beanDefinition = beans.get(name);
+    @Override
+    public BeanDefinition findBeanDefinition(String name, Class<?> type) {
+        BeanDefinition beanDefinition = this.beans.get(name);
 
         if (beanDefinition == null) {
             return null;
@@ -766,9 +785,57 @@ public class AnnotationConfigApplicationContext {
         return beanDefinition;
     }
 
+    @Override
+    public boolean containsBean(String name) {
+        return this.beans.containsKey(name);
+    }
+
+    @Override
+    public <T> T getBean(String name) {
+        BeanDefinition beanDefinition = findBeanDefinition(name);
+        if (beanDefinition == null) {
+            throw new NoSuchBeanDefinitionException(String.format("Can not find bean: %s", name));
+        }
+        Object instance = beanDefinition.getInstance();
+        return (T) instance;
+    }
+
+    @Override
+    public <T> T getBean(String name, Class<T> requiredType) {
+        BeanDefinition beanDefinition = findBeanDefinition(name, requiredType);
+        if (beanDefinition == null) {
+            throw new NoSuchBeanDefinitionException(String.format("Can not find bean: %s, type: %s", name, requiredType.getName()));
+        }
+
+        Object instance = beanDefinition.getInstance();
+        return (T) instance;
+    }
+
+    @Override
+    public <T> T getBean(Class<T> requiredType) {
+        BeanDefinition beanDefinition = findBeanDefinition(requiredType);
+        if (beanDefinition == null) {
+            throw new NoSuchBeanDefinitionException(String.format("Can not find bean of type: %s", requiredType.getName()));
+        }
+
+        Object instance = beanDefinition.getInstance();
+        return (T) instance;
+    }
+
+    @Override
+    public <T> List<T> getBeans(Class<T> requiredType) {
+        List<BeanDefinition> beanDefinitions = findBeanDefinitions(requiredType);
+        if (beanDefinitions.isEmpty()) {
+            return new ArrayList<>();
+        }
+        
+        return beanDefinitions.stream().map(b -> (T) b.getInstance()).collect(Collectors.toList());
+    }
+
     /**
      * 关闭容器
      */
+    @Override
     public void close() {
         log.debug("close container");
         destroyBeans();

@@ -6,7 +6,7 @@ import org.hzw.context.annotation.Value;
  * @author hzw
  */
 public class Pet {
-    @Value("pet.from")
+    @Value("${pet.from}")
     private String from;
 
     public String getFrom() {
