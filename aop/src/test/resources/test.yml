@@ -1,0 +1,17 @@
+student:
+  name: 小明
+  age: 12
+
+teacher:
+  name: 大明
+  age: 33
+
+dog:
+  name: hash
+  age: 6
+
+pet:
+  from: china
+
+cat:
+  name: hellokitty

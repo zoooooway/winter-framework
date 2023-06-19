@@ -8,13 +8,20 @@
         <version>${winter.version}</version>
         <relativePath>../parent/pom.xml</relativePath>
     </parent>
-
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>context</artifactId>
+    <artifactId>aop</artifactId>
 
+    <properties>
+        <bytebuddy.version>1.14.5</bytebuddy.version>
+    </properties>
 
     <dependencies>
+        <dependency>
+            <groupId>org.hzw.winter</groupId>
+            <artifactId>context</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
@@ -48,7 +55,12 @@
             <artifactId>jakarta.annotation-api</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>net.bytebuddy</groupId>
+            <artifactId>byte-buddy</artifactId>
+            <version>${bytebuddy.version}</version>
+        </dependency>
+
 
     </dependencies>
-
 </project>
