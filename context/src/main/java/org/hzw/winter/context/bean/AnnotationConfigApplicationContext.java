@@ -7,6 +7,7 @@ import org.hzw.winter.context.exception.*;
 import org.hzw.winter.context.property.PropertyResolver;
 import org.hzw.winter.context.resource.ResourcesResolver;
 import org.hzw.winter.context.util.ApplicationContextUtils;
+import org.hzw.winter.context.util.ClassUtil;
 import org.hzw.winter.context.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,6 +20,7 @@ import java.lang.reflect.*;
 import java.net.URISyntaxException;
 import java.util.*;
 import java.util.stream.Collectors;
+
 
 /**
  * 通过注解配置的应用程序上下文容器
@@ -144,8 +146,8 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
             Parameter[] parameters = method.getParameters();
             Object[] args = new Object[parameters.length];
             for (int i = 0; i < parameters.length; i++) {
-                Autowired autowired = findAnnotation(parameters[i], Autowired.class);
-                Value value = findAnnotation(parameters[i], Value.class);
+                Autowired autowired = ClassUtil.findAnnotation(parameters[i], Autowired.class);
+                Value value = ClassUtil.findAnnotation(parameters[i], Value.class);
                 if (autowired == null && value == null) {
                     continue;
                 }
@@ -212,8 +214,8 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
     private void injectField(Class<?> clazz, Object instance) throws IllegalAccessException, InvocationTargetException {
         Field[] declaredFields = clazz.getDeclaredFields();
         for (Field field : declaredFields) {
-            Autowired autowired = findAnnotation(field, Autowired.class);
-            Value value = findAnnotation(field, Value.class);
+            Autowired autowired = ClassUtil.findAnnotation(field, Autowired.class);
+            Value value = ClassUtil.findAnnotation(field, Value.class);
 
             if (check(clazz, field, autowired, value)) {
                 continue;
@@ -327,34 +329,6 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
         return classNameSet;
     }
 
-    /**
-     * 递归的寻找是否存在指定的注解
-     *
-     * @param source     被搜寻者
-     * @param annotation 搜寻的目标注解
-     * @return 搜寻到的注解，未找到则为null
-     */
-    @Nullable
-    private <A extends Annotation> A findAnnotation(AnnotatedElement source, Class<A> annotation) {
-        // 是否存在了bean注解
-        Annotation[] annotations = source.getAnnotations();
-        for (Annotation anno : annotations) {
-            // 避免无限递归， 比如@Target注解自身标记自身
-            if (anno.annotationType() == source) {
-                return null;
-            }
-            // anno.getClass() 会返回 proxy class 而不是 Annotation的真实 class，
-            if (anno.annotationType() == annotation) {
-                return source.getAnnotation(annotation);
-            }
-
-            A a = findAnnotation(anno.annotationType(), annotation);
-            if (a != null) {
-                return a;
-            }
-        }
-        return null;
-    }
 
     /**
      * 根据类名创建对应的BeanDefinition
@@ -369,7 +343,7 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
                 continue;
             }
 
-            Component component = findAnnotation(clazz, Component.class);
+            Component component = ClassUtil.findAnnotation(clazz, Component.class);
             if (component != null) {
                 int mod = clazz.getModifiers();
                 if (Modifier.isAbstract(mod)) {
@@ -395,7 +369,7 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
                 );
                 addBeanDefinitions(name2bdf, bdf);
 
-                Configuration configuration = findAnnotation(clazz, Configuration.class);
+                Configuration configuration = ClassUtil.findAnnotation(clazz, Configuration.class);
                 if (configuration != null) {
                     // 如果是@Configuration所标记的类，那么需要扫描类中包含的@Bean标记的方法
                     scanFactoryMethod(name2bdf, bdf.getName(), clazz);
@@ -450,7 +424,7 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
     }
 
     private int getOrder(Class<?> clazz) {
-        Order order = findAnnotation(clazz, Order.class);
+        Order order = ClassUtil.findAnnotation(clazz, Order.class);
         if (order == null) {
             return Integer.MAX_VALUE;
         }
@@ -494,7 +468,7 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
 
 
     private boolean checkIsPrimary(Class<?> clazz) {
-        Primary primary = findAnnotation(clazz, Primary.class);
+        Primary primary = ClassUtil.findAnnotation(clazz, Primary.class);
         return primary != null;
     }
 
@@ -587,7 +561,7 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
     }
 
     private boolean isConfiguration(BeanDefinition bdf) {
-        Configuration configuration = this.findAnnotation(bdf.getBeanClass(), Configuration.class);
+        Configuration configuration = ClassUtil.findAnnotation(bdf.getBeanClass(), Configuration.class);
         return configuration != null;
     }
 

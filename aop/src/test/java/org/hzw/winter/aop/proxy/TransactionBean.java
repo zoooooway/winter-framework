@@ -1,13 +1,11 @@
 package org.hzw.winter.aop.proxy;
 
-import org.hzw.winter.aop.annotation.Around;
 import org.hzw.winter.context.annotation.Component;
 import org.hzw.winter.context.annotation.Value;
 
 /**
  * @author hzw
  */
-@Around("transactionInvocationHandler")
 @Component
 public class TransactionBean {
     @Value("${transaction.name}")
@@ -25,7 +23,7 @@ public class TransactionBean {
         System.out.println("read" + name + " ...");
     }
 
-    @Transaction
+    @Transaction("transactionInvocationHandler")
     public void write() {
         System.out.println("write " + name + " ...");
     }

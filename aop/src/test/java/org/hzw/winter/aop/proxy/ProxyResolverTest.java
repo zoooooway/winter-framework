@@ -44,6 +44,8 @@ public class ProxyResolverTest {
         assertEquals(originBean.sayHello(), "hello " + map.get("origin.name") + "!");
         assertEquals(originBean.sayGoodbye(), "goodbye " + map.get("origin.name") + ".");
 
+        System.out.println("test transaction------");
+
         TransactionBean transactionBean = context.getBean("transactionBean");
         transactionBean.read();
         transactionBean.write();

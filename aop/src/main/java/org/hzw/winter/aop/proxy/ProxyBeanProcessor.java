@@ -1,5 +1,6 @@
 package org.hzw.winter.aop.proxy;
 
+import jakarta.annotation.Nullable;
 import org.hzw.winter.aop.exception.AopException;
 import org.hzw.winter.context.bean.BeanDefinition;
 import org.hzw.winter.context.bean.BeanPostProcessor;
@@ -19,13 +20,19 @@ import java.util.Map;
  * @author hzw
  */
 public class ProxyBeanProcessor<A extends Annotation> implements BeanPostProcessor {
-    private final Map<String, Object> originBean = new HashMap<>();
-    private Class<A> annotationClass = getParameterizedType();
+    private final Map<String, Object> originBeans = new HashMap<>();
+    /**
+     * 泛型类——指定开启代理的注解
+     */
+    private final Class<A> annotationClass = getParameterizedType();
 
+    /**
+     * 在proxyAnno()返回非空的情况下对象bean进行代理
+     */
     @Override
     public Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
-        A annotation = bean.getClass().getAnnotation(annotationClass);
-        if (annotation != null) {
+        A annotation;
+        if ((annotation = proxyAnno(bean, annotationClass)) != null) {
             String handlerName;
             try {
                 handlerName = (String) annotation.getClass().getMethod("value").invoke(annotation);
@@ -42,7 +49,7 @@ public class ProxyBeanProcessor<A extends Annotation> implements BeanPostProcess
 
             if (handlerBdf.getInstance() instanceof InvocationHandler) {
                 Object proxy = ProxyResolver.getInstance().createProxy(bean, (InvocationHandler) handlerBdf.getInstance());
-                originBean.put(beanName, bean);
+                originBeans.put(beanName, bean);
                 return proxy;
             } else {
                 throw new AopException(String.format("Expected a bean of type 'InvocationHandler', but could not be found. bean: '%s'", handlerName));
@@ -52,9 +59,22 @@ public class ProxyBeanProcessor<A extends Annotation> implements BeanPostProcess
         return BeanPostProcessor.super.postProcessBeforeInitialization(bean, beanName);
     }
 
+    /**
+     * 如果存在，获取该bean中指示代理的注解。
+     * 默认实现是从类上获取
+     *
+     * @param bean            bean实例
+     * @param targetAnnoClass 泛型中包含的注解类
+     * @return 注解实例
+     */
+    @Nullable
+    protected A proxyAnno(Object bean, Class<A> targetAnnoClass) {
+        return bean.getClass().getAnnotation(targetAnnoClass);
+    }
+
     @Override
     public Object postProcessOnSetProperty(Object bean, String beanName) {
-        Object origin = originBean.get(beanName);
+        Object origin = originBeans.get(beanName);
         if (origin == null || origin == bean) {
             return bean;
         }
