@@ -1,0 +1,9 @@
+winter:
+  datasource:
+    driver-class-name: org.sqlite.JDBC
+    url: jdbc:sqlite:test.db
+    username: sa
+    password:
+    maximum-pool-size: 20
+    minimum-pool-size: 1
+    connection-timeout: 30000
