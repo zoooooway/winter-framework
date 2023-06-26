@@ -33,8 +33,7 @@ public class AnnotationConfigApplicationContextTest {
         properties.load(Files.newInputStream(Path.of(resource.toURI())));
         PropertyResolver propertyResolver = new PropertyResolver(properties);
 
-        YamlUtils yamlUtils = new YamlUtils();
-        Map<String, Object> map = yamlUtils.loadYaml("test.yml");
+        Map<String, Object> map = YamlUtils.loadYaml("test.yml");
         PropertyResolver ymlPropertyResolver = new PropertyResolver(map);
 
         var context = new AnnotationConfigApplicationContext(ScanApplication.class, ymlPropertyResolver);

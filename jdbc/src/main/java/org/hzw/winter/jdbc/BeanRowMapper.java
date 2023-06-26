@@ -42,7 +42,7 @@ public class BeanRowMapper<T> implements RowMapper<T> {
         try {
             T t = clazz.getDeclaredConstructor().newInstance();
 
-            for (int i = 0; i < metaData.getColumnCount(); i++) {
+            for (int i = 1; i <= metaData.getColumnCount(); i++) {
                 String columnName = metaData.getColumnName(i);
                 Method method = methodMap.get(columnName);
                 if (method != null) {

@@ -38,7 +38,7 @@ public class JdbcConfiguration {
                                  @Value("${winter.datasource.connection-timeout:0}") long connTimeout
     ) {
         HikariConfig config = new HikariConfig();
-        config.setAutoCommit(false);
+        config.setAutoCommit(true);
         config.setDriverClassName(driverClassName);
         config.setJdbcUrl(url);
         config.setUsername(username);

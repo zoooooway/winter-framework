@@ -29,7 +29,7 @@ public class YamlUtils {
      * @throws IOException
      * @throws URISyntaxException
      */
-    public Map<String, Object> loadYaml(String path) throws IOException, URISyntaxException {
+    public static Map<String, Object> loadYaml(String path) throws IOException, URISyntaxException {
         var loaderOptions = new LoaderOptions();
         var dumperOptions = new DumperOptions();
         var representer = new Representer(dumperOptions);
@@ -55,7 +55,7 @@ public class YamlUtils {
      * @param prefix
      * @param map
      */
-    private void plain(Object node, String prefix, Map<String, Object> map) {
+    private static void plain(Object node, String prefix, Map<String, Object> map) {
         if (node instanceof Map) {
             Set<? extends Map.Entry<?, ?>> entries = ((Map<?, ?>) node).entrySet();
             for (var v : entries) {
@@ -83,15 +83,15 @@ public class YamlUtils {
         return cl;
     }
 
-    /**
-     * Disable ALL implicit convert and treat all values as string.
-     */
-    class NoImplicitResolver extends Resolver {
+}
 
-        public NoImplicitResolver() {
-            super();
-            super.yamlImplicitResolvers.clear();
-        }
+/**
+ * Disable ALL implicit convert and treat all values as string.
+ */
+class NoImplicitResolver extends Resolver {
+
+    public NoImplicitResolver() {
+        super();
+        super.yamlImplicitResolvers.clear();
     }
-
 }

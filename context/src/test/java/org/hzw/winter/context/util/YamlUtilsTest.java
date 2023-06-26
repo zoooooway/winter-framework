@@ -1,6 +1,5 @@
 package org.hzw.winter.context.util;
 
-import org.hzw.winter.context.util.YamlUtils;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -16,8 +15,7 @@ public class YamlUtilsTest {
 
     @Test
     public void testYaml() throws IOException, URISyntaxException {
-        YamlUtils yamlUtils = new YamlUtils();
-        Map<String, Object> map = yamlUtils.loadYaml("test.yml");
+        Map<String, Object> map = YamlUtils.loadYaml("test.yml");
         assertEquals(map.get("student.name"), "小明");
         assertEquals(map.get("student.age"), "12");
         assertEquals(map.get("teacher.name"), "大明");
