@@ -8,7 +8,7 @@ import java.lang.reflect.AnnotatedElement;
 /**
  * @author hzw
  */
-public class ClassUtil {
+public class ClassUtils {
 
     /**
      * 递归的寻找是否存在指定的注解

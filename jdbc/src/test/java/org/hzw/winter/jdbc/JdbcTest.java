@@ -6,6 +6,7 @@ import org.hzw.winter.context.util.YamlUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -80,5 +81,34 @@ public class JdbcTest {
         Assertions.assertNotNull(jdbcTemplate.queryForObject(SELECT_USER, User.class, user.getId()));
         jdbcTemplate.update(DELETE_USER, user.getId());
         Assertions.assertNull(jdbcTemplate.queryForObject(SELECT_USER, User.class, user.getId()));
+
+
+    }
+
+
+    @Test
+    public void testTx() throws Exception {
+        Map<String, Object> map = YamlUtils.loadYaml("test.yml");
+        PropertyResolver propertyResolver = new PropertyResolver(map);
+        var context = new AnnotationConfigApplicationContext(JdbcTest.class, propertyResolver);
+        JdbcTemplate jdbcTemplate = context.getBean("jdbcTemplate", JdbcTemplate.class);
+
+        // 初始化表
+        jdbcTemplate.update(DROP_USER);
+        jdbcTemplate.update(DROP_ADDRESS);
+        jdbcTemplate.update(CREATE_USER);
+        jdbcTemplate.update(CREATE_ADDRESS);
+
+        UserService userService = context.getBean("userService", UserService.class);
+        try {
+            List<User> users = userService.testTransaction();
+            System.out.println(users);
+        } catch (Exception e){
+            e.printStackTrace();
+        }
+        List<User> users = jdbcTemplate.queryForList(ALL_USER, User.class);
+        System.out.println(users);
+        List<User> users1 = userService.testWithOutTransaction();
+        System.out.println(users1);
     }
 }

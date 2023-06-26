@@ -8,14 +8,16 @@ import java.lang.reflect.Method;
  *
  * @author hzw
  */
-public abstract class AroundInvocationHandler implements InvocationHandler {
+public interface AroundInvocationHandler extends InvocationHandler {
 
-    abstract void before(Object proxy, Method method, Object[] args);
+    default void before(Object proxy, Method method, Object[] args) {
+        // do nothing
+    }
 
-    abstract Object doInvoke(Object proxy, Method method, Object[] args) throws Throwable;
+    Object doInvoke(Object proxy, Method method, Object[] args) throws Throwable;
 
     @Override
-    public final Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+    default Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
         before(proxy, method, args);
 
         Object result = doInvoke(proxy, method, args);
@@ -25,5 +27,7 @@ public abstract class AroundInvocationHandler implements InvocationHandler {
         return result;
     }
 
-    abstract void after(Object proxy, Object result, Method method, Object[] args);
+    default void after(Object proxy, Object result, Method method, Object[] args) {
+        // do nothing
+    }
 }

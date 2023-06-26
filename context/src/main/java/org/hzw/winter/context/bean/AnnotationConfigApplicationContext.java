@@ -7,7 +7,7 @@ import org.hzw.winter.context.exception.*;
 import org.hzw.winter.context.property.PropertyResolver;
 import org.hzw.winter.context.resource.ResourcesResolver;
 import org.hzw.winter.context.util.ApplicationContextUtils;
-import org.hzw.winter.context.util.ClassUtil;
+import org.hzw.winter.context.util.ClassUtils;
 import org.hzw.winter.context.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -146,8 +146,8 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
             Parameter[] parameters = method.getParameters();
             Object[] args = new Object[parameters.length];
             for (int i = 0; i < parameters.length; i++) {
-                Autowired autowired = ClassUtil.findAnnotation(parameters[i], Autowired.class);
-                Value value = ClassUtil.findAnnotation(parameters[i], Value.class);
+                Autowired autowired = ClassUtils.findAnnotation(parameters[i], Autowired.class);
+                Value value = ClassUtils.findAnnotation(parameters[i], Value.class);
                 if (autowired == null && value == null) {
                     continue;
                 }
@@ -160,7 +160,7 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
                 if (autowired != null) {
                     // 查找依赖的BeanDefinition，如果指定了依赖的名称，直接使用名称查找，否则按类型查找
                     BeanDefinition beanDefinition;
-                    String name = autowired.name();
+                    String name = autowired.value();
                     if (StringUtils.isEmpty(name)) {
                         // 先使用参数的名称来进行查找
                         // todo 默认class文件中不存储参数名称，需要使用 -parameters 编译命令来开启存储参数名称， 或者使用字节码框架来进行处理
@@ -214,8 +214,8 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
     private void injectField(Class<?> clazz, Object instance) throws IllegalAccessException, InvocationTargetException {
         Field[] declaredFields = clazz.getDeclaredFields();
         for (Field field : declaredFields) {
-            Autowired autowired = ClassUtil.findAnnotation(field, Autowired.class);
-            Value value = ClassUtil.findAnnotation(field, Value.class);
+            Autowired autowired = ClassUtils.findAnnotation(field, Autowired.class);
+            Value value = ClassUtils.findAnnotation(field, Value.class);
 
             if (check(clazz, field, autowired, value)) {
                 continue;
@@ -224,7 +224,7 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
             if (autowired != null) {
                 // 查找依赖的BeanDefinition，如果指定了依赖的名称，直接使用名称查找，否则按类型查找
                 BeanDefinition beanDefinition;
-                String name = autowired.name();
+                String name = autowired.value();
                 if (StringUtils.isEmpty(name)) {
                     beanDefinition = findBeanDefinition(field.getType());
                 } else {
@@ -343,7 +343,7 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
                 continue;
             }
 
-            Component component = ClassUtil.findAnnotation(clazz, Component.class);
+            Component component = ClassUtils.findAnnotation(clazz, Component.class);
             if (component != null) {
                 int mod = clazz.getModifiers();
                 if (Modifier.isAbstract(mod)) {
@@ -369,7 +369,7 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
                 );
                 addBeanDefinitions(name2bdf, bdf);
 
-                Configuration configuration = ClassUtil.findAnnotation(clazz, Configuration.class);
+                Configuration configuration = ClassUtils.findAnnotation(clazz, Configuration.class);
                 if (configuration != null) {
                     // 如果是@Configuration所标记的类，那么需要扫描类中包含的@Bean标记的方法
                     scanFactoryMethod(name2bdf, bdf.getName(), clazz);
@@ -424,7 +424,7 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
     }
 
     private int getOrder(Class<?> clazz) {
-        Order order = ClassUtil.findAnnotation(clazz, Order.class);
+        Order order = ClassUtils.findAnnotation(clazz, Order.class);
         if (order == null) {
             return Integer.MAX_VALUE;
         }
@@ -468,7 +468,7 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
 
 
     private boolean checkIsPrimary(Class<?> clazz) {
-        Primary primary = ClassUtil.findAnnotation(clazz, Primary.class);
+        Primary primary = ClassUtils.findAnnotation(clazz, Primary.class);
         return primary != null;
     }
 
@@ -561,7 +561,7 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
     }
 
     private boolean isConfiguration(BeanDefinition bdf) {
-        Configuration configuration = ClassUtil.findAnnotation(bdf.getBeanClass(), Configuration.class);
+        Configuration configuration = ClassUtils.findAnnotation(bdf.getBeanClass(), Configuration.class);
         return configuration != null;
     }
 
@@ -617,7 +617,7 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
 
             if (autowired != null) {
                 // 注入bean
-                String name = autowired.name();
+                String name = autowired.value();
 
                 // 查找依赖的BeanDefinition，如果指定了依赖的名称，直接使用名称查找，否则按类型查找
                 BeanDefinition beanDefinition;

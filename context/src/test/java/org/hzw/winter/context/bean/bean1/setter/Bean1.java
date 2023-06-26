@@ -13,7 +13,7 @@ public class Bean1 {
     private String name;
     private Cat cat;
 
-    public void setName(@Value("${student.name}") String name, @Autowired(name = "cat") Cat cat) {
+    public void setName(@Value("${student.name}") String name, @Autowired(value = "cat") Cat cat) {
         this.name = name;
         this.cat = cat;
     }

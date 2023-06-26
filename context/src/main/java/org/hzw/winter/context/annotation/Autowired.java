@@ -19,5 +19,5 @@ public @interface Autowired {
     /**
      * 指定注入依赖的名称
      */
-    String name() default "";
+    String value() default "";
 }

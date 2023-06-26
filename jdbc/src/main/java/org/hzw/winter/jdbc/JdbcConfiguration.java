@@ -6,6 +6,8 @@ import org.hzw.winter.context.annotation.Autowired;
 import org.hzw.winter.context.annotation.Bean;
 import org.hzw.winter.context.annotation.Configuration;
 import org.hzw.winter.context.annotation.Value;
+import org.hzw.winter.jdbc.tx.SimpleTransactionManager;
+import org.hzw.winter.jdbc.tx.TransactionBeanProcessor;
 
 import javax.sql.DataSource;
 
@@ -18,13 +20,6 @@ import javax.sql.DataSource;
 public class JdbcConfiguration {
 
     /**
-     *
-     * @param driverClassName
-     * @param url
-     * @param username
-     * @param password
-     * @param maximumPoolSize
-     * @param minimumPoolSize
      * @param connTimeout 如果为0，则会使用Integer.MAX_VALUE
      * @return
      */
@@ -51,7 +46,18 @@ public class JdbcConfiguration {
     }
 
     @Bean
-    public JdbcTemplate jdbcTemplate(@Autowired DataSource dataSource) {
+    public JdbcTemplate jdbcTemplate(@Autowired(value = "dataSource") DataSource dataSource) {
         return new JdbcTemplate(dataSource);
+    }
+
+
+    @Bean
+    public TransactionBeanProcessor transactionBeanProcessor() {
+        return new TransactionBeanProcessor();
+    }
+
+    @Bean
+    public SimpleTransactionManager simpleTransactionManager(@Autowired(value = "dataSource") DataSource dataSource) {
+        return new SimpleTransactionManager(dataSource);
     }
 }

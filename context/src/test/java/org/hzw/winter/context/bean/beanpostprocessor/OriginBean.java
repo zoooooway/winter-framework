@@ -26,7 +26,7 @@ public class OriginBean {
         return cat;
     }
 
-    public void setCat(@Autowired(name = "cat") Cat cat) {
+    public void setCat(@Autowired(value = "cat") Cat cat) {
         this.cat = cat;
     }
 

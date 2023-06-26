@@ -2,6 +2,8 @@ package org.hzw.winter.jdbc;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import org.hzw.winter.jdbc.tx.TransactionStatus;
+import org.hzw.winter.jdbc.tx.TransactionUtils;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -95,10 +97,21 @@ public class JdbcTemplate {
 
 
     protected <T> T execute(ConnectionCallback<T> action) {
-        try (Connection conn = dataSource.getConnection()) {
-            return action.doInConnection(conn);
-        } catch (SQLException e) {
-            throw new DataAccessException(e);
+        TransactionStatus ts = TransactionUtils.getCurrentTransaction();
+        if (ts != null) {
+            // 如果当前存在事务，则在当前事务中执行操作
+            Connection conn = ts.getConn();
+            try {
+                return action.doInConnection(conn);
+            } catch (SQLException e) {
+                throw new DataAccessException(e);
+            }
+        } else {
+            try (Connection conn = dataSource.getConnection()) {
+                return action.doInConnection(conn);
+            } catch (SQLException e) {
+                throw new DataAccessException(e);
+            }
         }
     }
 

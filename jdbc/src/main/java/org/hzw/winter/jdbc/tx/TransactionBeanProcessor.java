@@ -1,26 +1,26 @@
-package org.hzw.winter.aop.proxy;
+package org.hzw.winter.jdbc.tx;
 
 import jakarta.annotation.Nullable;
-import org.hzw.winter.context.annotation.Component;
+import org.hzw.winter.aop.proxy.ProxyBeanProcessor;
 import org.hzw.winter.context.util.ClassUtils;
 
 import java.lang.reflect.Method;
 
 /**
+ * 用于代理需要开启事务的BeanProcessor
+ *
  * @author hzw
  */
-@Component
-public class TransactionBeanProcessor extends ProxyBeanProcessor<Transaction> {
-
+public class TransactionBeanProcessor extends ProxyBeanProcessor<Transactional> {
     /**
      * 从bean的public方法上获取指示代理的注解
      */
     @Override
     @Nullable
-    protected Transaction proxyAnno(Object bean, Class<Transaction> targetAnnoClass) {
+    protected Transactional proxyAnno(Object bean, Class<Transactional> targetAnnoClass) {
         Method[] methods = bean.getClass().getMethods();
         for (Method m : methods) {
-            Transaction annotation = ClassUtils.findAnnotation(m, targetAnnoClass);
+            Transactional annotation = ClassUtils.findAnnotation(m, targetAnnoClass);
             if (annotation != null) {
                 return annotation;
             }

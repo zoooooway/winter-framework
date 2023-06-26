@@ -8,7 +8,7 @@ import java.lang.reflect.Method;
  * @author hzw
  */
 @Component
-public class PoliteInvocationHandler extends AroundInvocationHandler {
+public class PoliteInvocationHandler implements AroundInvocationHandler {
     @Override
     public void before(Object proxy, Method method, Object[] args) {
         if (method.getAnnotation(Polite.class) != null) {

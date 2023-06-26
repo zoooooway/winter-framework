@@ -11,7 +11,7 @@ public class Farm {
     private final Pig pig1;
     private final Pig pig2;
 
-    public Farm(@Autowired(name = "pig1") Pig pig1, @Autowired(name = "pig2") Pig pig2) {
+    public Farm(@Autowired(value = "pig1") Pig pig1, @Autowired(value = "pig2") Pig pig2) {
         this.pig1 = pig1;
         this.pig2 = pig2;
     }
