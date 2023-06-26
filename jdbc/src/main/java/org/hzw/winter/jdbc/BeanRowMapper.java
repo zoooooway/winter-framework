@@ -13,13 +13,13 @@ import java.util.Map;
  */
 public class BeanRowMapper<T> implements RowMapper<T> {
 
-    Class<T> clazz;
+    final Class<T> clazz;
     Map<String, Method> methodMap = new HashMap<>();
     Map<String, Field> fieldMap = new HashMap<>();
 
-    public BeanRowMapper(Class<T> clazz) throws NoSuchMethodException {
+    public BeanRowMapper(Class<T> clazz) {
         this.clazz = clazz;
-        Method[] methods = clazz.getMethods();
+        Method[] methods = clazz.getDeclaredMethods();
         for (Method m : methods) {
             if (m.getParameters().length == 1 && m.getName().startsWith("set")) {
                 String label =   Character.toLowerCase(m.getName().charAt(3)) + m.getName().substring(4);
@@ -28,7 +28,7 @@ public class BeanRowMapper<T> implements RowMapper<T> {
             }
         }
 
-        Field[] fields = clazz.getFields();
+        Field[] fields = clazz.getDeclaredFields();
         for (Field f : fields) {
             f.setAccessible(true);
             fieldMap.put(f.getName(), f);

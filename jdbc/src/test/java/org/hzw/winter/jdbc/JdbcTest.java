@@ -51,9 +51,9 @@ public class JdbcTest {
         Assertions.assertNull(jdbcTemplate.queryForObject(SELECT_USER, User.class, 1));
 
         User u = new User();
-        u.setName("ash");
-        u.setAge(18);
-        int update = jdbcTemplate.update(INSERT_USER, u.getName(), u.getAge());
+        String name = "ash";
+        Integer age = 18;
+        int update = jdbcTemplate.update(INSERT_USER, name, age);
         Assertions.assertEquals(1, jdbcTemplate.queryForList(ALL_USER, User.class).size());
 
         User user = jdbcTemplate.queryForList(ALL_USER, User.class).get(0);
@@ -65,8 +65,8 @@ public class JdbcTest {
         Assertions.assertEquals(1, jdbcTemplate.queryForList(ALL_ADDRESS, Address.class).size());
         Assertions.assertNotNull(jdbcTemplate.queryForObject(SELECT_ADDRESS_BY_USERID, Address.class, user.getId()));
 
-        Assertions.assertEquals(user.getAge(), jdbcTemplate.queryForList(SELECT_USER_AGE, User.class, user.getId()).get(0).getAge());
-        Assertions.assertEquals(user.getAge(), jdbcTemplate.queryForObject(SELECT_USER_AGE, User.class, user.getId()).getAge());
+        Assertions.assertEquals(age, jdbcTemplate.queryForList(SELECT_USER_AGE, User.class, user.getId()).get(0).getAge());
+        Assertions.assertEquals(age, jdbcTemplate.queryForObject(SELECT_USER_AGE, User.class, user.getId()).getAge());
 
         Assertions.assertEquals(user.getAge(), jdbcTemplate.queryForList(SELECT_USER_AGE, Number.class, user.getId()).get(0));
         Assertions.assertEquals(user.getAge(), jdbcTemplate.queryForObject(SELECT_USER_AGE, Number.class, user.getId()));
@@ -77,6 +77,7 @@ public class JdbcTest {
         Assertions.assertEquals("cli", jdbcTemplate.queryForObject(SELECT_USER_NAME, String.class, user.getId()));
         Assertions.assertEquals(22, jdbcTemplate.queryForObject(SELECT_USER_AGE, Number.class, user.getId()));
 
+        Assertions.assertNotNull(jdbcTemplate.queryForObject(SELECT_USER, User.class, user.getId()));
         jdbcTemplate.update(DELETE_USER, user.getId());
         Assertions.assertNull(jdbcTemplate.queryForObject(SELECT_USER, User.class, user.getId()));
     }
