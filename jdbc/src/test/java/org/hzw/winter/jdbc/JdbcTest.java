@@ -103,12 +103,49 @@ public class JdbcTest {
         try {
             List<User> users = userService.testTransaction();
             System.out.println(users);
-        } catch (Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
         }
         List<User> users = jdbcTemplate.queryForList(ALL_USER, User.class);
         System.out.println(users);
         List<User> users1 = userService.testWithOutTransaction();
         System.out.println(users1);
+
+        // 初始化表
+        jdbcTemplate.update(DROP_USER);
+        jdbcTemplate.update(DROP_ADDRESS);
+        jdbcTemplate.update(CREATE_USER);
+        jdbcTemplate.update(CREATE_ADDRESS);
+
+        System.out.println("test transaction.......");
+
+        System.out.println(jdbcTemplate.queryForList(ALL_USER, User.class));
+        System.out.println(jdbcTemplate.queryForList(ALL_ADDRESS, Address.class));
+        try {
+            userService.testTransactionSubNotTX("aa", 12, "hebei");
+        } catch (Exception e) {
+
+        }
+
+        System.out.println(jdbcTemplate.queryForList(ALL_USER, User.class));
+        System.out.println(jdbcTemplate.queryForList(ALL_ADDRESS, Address.class));
+
+
+        try {
+            userService.testTransactionSubTX("bb", 13, "shandong");
+        } catch (Exception e) {
+
+        }
+
+        System.out.println(jdbcTemplate.queryForList(ALL_USER, User.class));
+        System.out.println(jdbcTemplate.queryForList(ALL_ADDRESS, Address.class));
+
+        try {
+            userService.testWithOutTransactionSubTX("cc", 14, "beijing");
+        } catch (Exception e) {
+
+        }
+        System.out.println(jdbcTemplate.queryForList(ALL_USER, User.class));
+        System.out.println(jdbcTemplate.queryForList(ALL_ADDRESS, Address.class));
     }
 }

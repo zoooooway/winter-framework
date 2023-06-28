@@ -2,6 +2,7 @@ package org.hzw.winter.jdbc.tx;
 
 import jakarta.annotation.Nullable;
 import org.hzw.winter.aop.proxy.AroundInvocationHandler;
+import org.hzw.winter.context.util.ClassUtils;
 
 import javax.sql.DataSource;
 import java.lang.reflect.InvocationTargetException;
@@ -25,6 +26,16 @@ public class SimpleTransactionManager implements TransactionManager, AroundInvoc
 
     @Override
     public Object doInvoke(Object proxy, Method method, Object[] args) throws SQLException, IllegalAccessException, InvocationTargetException {
+        if (ClassUtils.findAnnotation(method, Transactional.class) != null) {
+            return doTransaction(proxy, method, args);
+
+        } else {
+            return method.invoke(proxy, args);
+        }
+
+    }
+
+    private Object doTransaction(Object proxy, Method method, Object[] args) throws SQLException, IllegalAccessException, InvocationTargetException {
         TransactionStatus ts = tx.get();
         if (ts == null) {
             // 开启新事务
