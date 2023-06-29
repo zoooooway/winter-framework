@@ -1,11 +1,11 @@
 package org.hzw.winter.context.bean.bean1;
 
 
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import org.hzw.winter.context.annotation.Component;
 import org.hzw.winter.context.annotation.Value;
 
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
 
 /**
  * @author hzw

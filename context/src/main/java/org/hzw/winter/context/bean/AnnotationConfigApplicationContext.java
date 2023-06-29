@@ -2,6 +2,8 @@ package org.hzw.winter.context.bean;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import org.hzw.winter.context.annotation.*;
 import org.hzw.winter.context.exception.*;
 import org.hzw.winter.context.property.PropertyResolver;
@@ -12,8 +14,6 @@ import org.hzw.winter.context.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
 import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
