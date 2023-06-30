@@ -7,11 +7,18 @@ public class Resource {
 
     private final String relativePath;
 
-    public Resource(String relativePath) {
+    private final String name;
+
+    public Resource(String relativePath, String name) {
         this.relativePath = relativePath;
+        this.name = name;
     }
 
     public String getRelativePath() {
         return relativePath;
+    }
+
+    public String getName() {
+        return name;
     }
 }

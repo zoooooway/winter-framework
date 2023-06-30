@@ -38,4 +38,14 @@ public class ClassUtils {
         }
         return null;
     }
+
+
+    public static ClassLoader getContextClassLoader() {
+        ClassLoader cl = null;
+        cl = Thread.currentThread().getContextClassLoader();
+        if (cl == null) {
+            cl = ClassUtils.class.getClassLoader();
+        }
+        return cl;
+    }
 }

@@ -318,8 +318,10 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
         for (String pkg : packages) {
             ResourcesResolver resolver = new ResourcesResolver(pkg);
             List<String> scan = resolver.scan(r -> {
-                String relativePath = r.getRelativePath();
-                return relativePath.substring(0, relativePath.length() - 6);
+                if (r.getName().endsWith(".class")) {
+                    return r.getName().substring(0, r.getName().length() - 6);
+                }
+                return null;
             });
             classNameSet.addAll(scan);
         }

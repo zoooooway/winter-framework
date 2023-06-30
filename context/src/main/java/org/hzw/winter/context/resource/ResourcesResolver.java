@@ -1,17 +1,19 @@
 package org.hzw.winter.context.resource;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.hzw.winter.context.util.ClassUtils;
 
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
@@ -20,7 +22,6 @@ import java.util.stream.Stream;
  * @author hzw
  */
 public class ResourcesResolver {
-    Logger logger = LoggerFactory.getLogger(ResourcesResolver.class);
 
     private final String basePackage;
 
@@ -38,26 +39,49 @@ public class ResourcesResolver {
         String basePackagePath = this.basePackage.replace(".", "/");
         List<R> list = new ArrayList<>();
 
-        ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
+        ClassLoader contextClassLoader = ClassUtils.getContextClassLoader();
         Enumeration<URL> resources = contextClassLoader.getResources(basePackagePath);
         if (resources == null) {
             return list;
         }
 
         while (resources.hasMoreElements()) {
-            URL url = resources.nextElement();
-            URI uri = url.toURI();
+            URI uri = resources.nextElement().toURI();
 
-            try (Stream<Path> walk = Files.walk(Path.of(uri))) {
+            System.out.println(uri);
+
+            Path path = null;
+            FileSystem fileSystem = null;
+            if ("file".equals(uri.getScheme())) {
+                /*
+                file:/H:/hzw/learn/github/winter-framework/aop/target/classes/org/hzw/winter
+                 */
+                path = Path.of(uri);
+
+            } else if ("jar".equals(uri.getScheme())) {
+                /*
+                jar:file:/H:/hzw/learn/github/winter-framework/context/target/context-1.0.jar!/org/hzw/winter
+                 */
+                fileSystem = FileSystems.newFileSystem(uri, Map.of());
+                path = fileSystem.getPath(basePackagePath);
+            }
+
+            try (Stream<Path> walk = Files.walk(path)) {
                 walk.filter(Files::isRegularFile).forEach(p -> {
-                    if (p.toString().endsWith(".class")) {
-                        String path = replaceSlashToSpot(p.toString());
-                        path = path.substring(path.indexOf(this.basePackage));
-                        Resource r = new Resource(path);
-                        R apply = mapper.apply(r);
+                    String str = p.toString().replace("\\", "/");
+                    int idx = str.indexOf(basePackagePath);
+
+                    Resource r = new Resource(str.substring(0, idx), replaceSlashToSpot(str.substring(idx)));
+                    R apply = mapper.apply(r);
+                    if (apply != null) {
                         list.add(apply);
                     }
+
                 });
+            } finally {
+                if (fileSystem != null) {
+                    fileSystem.close();
+                }
             }
         }
 

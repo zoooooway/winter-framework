@@ -17,9 +17,12 @@ public class ResourceTest {
 
     @Test
     public void test() throws IOException, URISyntaxException {
-        ResourcesResolver rr = new ResourcesResolver("org/hzw");
+        ResourcesResolver rr = new ResourcesResolver("org.hzw");
         List<String> scan = rr.scan(r -> {
-            return r.getRelativePath();
+            if (r.getName().endsWith(".class")) {
+                return r.getName().substring(0, r.getName().length() - 6);
+            }
+            return null;
         });
 
         logger.info(scan.toString());

@@ -8,6 +8,7 @@ import org.yaml.snakeyaml.representer.Representer;
 import org.yaml.snakeyaml.resolver.Resolver;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Files;
@@ -24,28 +25,62 @@ public class YamlUtils {
 
     /**
      * 加载指定的yaml文件，解析为map
+     *
      * @param path
      * @return
      * @throws IOException
      * @throws URISyntaxException
      */
     public static Map<String, Object> loadYaml(String path) throws IOException, URISyntaxException {
-        var loaderOptions = new LoaderOptions();
-        var dumperOptions = new DumperOptions();
-        var representer = new Representer(dumperOptions);
-        var resolver = new NoImplicitResolver();
-        var yaml = new Yaml(new Constructor(loaderOptions), representer, dumperOptions, loaderOptions, resolver);
-        URL resources = getContextClassLoader().getResource(path);
-        if (resources == null) {
+        URL resource = ClassUtils.getContextClassLoader().getResource(path);
+        if (resource == null) {
             throw new NoSuchFileException(path);
         }
 
-        Iterable<Object> elements = yaml.loadAll(Files.newInputStream(Path.of(resources.toURI())));
+        return loadYaml(resource);
+    }
+
+    /**
+     * 加载指定的yaml文件，解析为map
+     *
+     * @param path
+     * @return
+     * @throws IOException
+     * @throws URISyntaxException
+     */
+    public static Map<String, Object> loadYaml(URL path) throws IOException, URISyntaxException {
+        Yaml yaml = createYaml();
+        Iterable<Object> elements = yaml.loadAll(Files.newInputStream(Path.of(path.toURI())));
         Map<String, Object> map = new HashMap<>();
         for (Object o : elements) {
             plain(o, "", map);
         }
         return map;
+    }
+
+    /**
+     * 解析指定流中的yaml属性值为map
+     */
+    public static Map<String, Object> loadYaml(InputStream is) {
+        Yaml yaml = createYaml();
+
+        Iterable<Object> elements = yaml.loadAll(is);
+        Map<String, Object> map = new HashMap<>();
+        for (Object o : elements) {
+            plain(o, "", map);
+        }
+        return map;
+    }
+
+    /**
+     * 创建一个用于解析yaml文件的实例，该实例不是线程安全的
+     */
+    private static Yaml createYaml() {
+        var loaderOptions = new LoaderOptions();
+        var dumperOptions = new DumperOptions();
+        var representer = new Representer(dumperOptions);
+        var resolver = new NoImplicitResolver();
+        return new Yaml(new Constructor(loaderOptions), representer, dumperOptions, loaderOptions, resolver);
     }
 
     /**
@@ -72,15 +107,6 @@ public class YamlUtils {
         } else {
             map.put(prefix, node);
         }
-    }
-
-    static ClassLoader getContextClassLoader() {
-        ClassLoader cl = null;
-        cl = Thread.currentThread().getContextClassLoader();
-        if (cl == null) {
-            cl = YamlUtils.class.getClassLoader();
-        }
-        return cl;
     }
 
 }
