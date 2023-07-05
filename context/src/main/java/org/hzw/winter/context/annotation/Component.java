@@ -14,5 +14,5 @@ public @interface Component {
     /**
      * bean 名称，默认是首字母小写的类名
      */
-    String name() default "";
+    String value() default "";
 }

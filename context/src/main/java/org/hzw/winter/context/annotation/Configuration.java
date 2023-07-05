@@ -12,4 +12,5 @@ import java.lang.annotation.*;
 @Documented
 @Component
 public @interface Configuration {
+    String value() default "";
 }

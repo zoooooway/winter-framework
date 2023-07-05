@@ -356,7 +356,7 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
                 }
 
                 BeanDefinition bdf = new BeanDefinition(
-                        getBeanName(component, clazz),
+                        getBeanName(clazz),
                         clazz,
                         null,
                         getSuitableConstructor(clazz),
@@ -479,14 +479,43 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
         return primary != null;
     }
 
-    private String getBeanName(Component component, Class<?> clazz) {
-        if (component.name() != null && !"".equals(component.name())) {
-            return component.name();
+    /**
+     * 从类上获取@Component或被其他被@Component标注的注解的value()方法值
+     *
+     * @param clazz
+     * @return
+     */
+    private String getBeanName(Class<?> clazz) {
+        String beanName;
+        // 是否存在了bean注解
+        Annotation[] annotations = clazz.getAnnotations();
+        Annotation annotation = null;
+        for (Annotation anno : annotations) {
+            if (anno.annotationType().equals(Component.class)) {
+                annotation = anno;
+                break;
+            }
+
+            // 查找此注解是否被@Component标注
+            Component component = ClassUtils.findAnnotation(anno.annotationType(), Component.class);
+            if (component != null) {
+                annotation = anno;
+                break;
+            }
         }
 
-        String name = clazz.getName();
-        String className = name.substring(name.lastIndexOf(".") + 1);
-        return firstCharToLower(className);
+        try {
+            beanName = (String) annotation.getClass().getMethod("value").invoke(annotation);
+        } catch (Exception e) {
+            throw new BeanCreationException(String.format("Get bean name failed, bean: '%s'", clazz.getName()), e);
+        }
+
+        if (StringUtils.isEmpty(beanName)) {
+            // 取默认值
+            String className = clazz.getName().substring(clazz.getName().lastIndexOf(".") + 1);
+            return firstCharToLower(className);
+        }
+        return beanName;
     }
 
     private String getBeanName(Bean bean, Method method) {

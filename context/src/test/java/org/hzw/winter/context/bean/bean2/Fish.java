@@ -5,7 +5,7 @@ import org.hzw.winter.context.annotation.Component;
 /**
  * @author hzw
  */
-@Component(name = "bigFish")
+@Component(value = "bigFish")
 public class Fish {
     private String name;
 
