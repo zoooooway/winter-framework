@@ -7,7 +7,8 @@ import org.hzw.winter.context.bean.AnnotationConfigApplicationContext;
 import org.hzw.winter.context.bean.ApplicationContext;
 import org.hzw.winter.context.property.PropertyResolver;
 import org.hzw.winter.context.util.ClassUtils;
-import org.hzw.winter.web.exception.ServletException;
+import org.hzw.winter.web.exception.ServletErrorException;
+import org.hzw.winter.web.mvc.ViewResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,13 +43,14 @@ public class WinterListener implements ServletContextListener {
                 context = new AnnotationConfigApplicationContext(Class.forName(configuration), PropertyResolver.create(APP_CONFIG_PROP));
             }
 
-            dispatchServlet = new DispatchServlet(context);
+            ViewResolver freeMarkerViewResolver = context.getBean("freeMarkerViewResolver", ViewResolver.class);
+            dispatchServlet = new DispatchServlet(context, freeMarkerViewResolver);
             var dynamic = sce.getServletContext().addServlet("dispatchServlet", dispatchServlet);
             dynamic.addMapping("/");
             dynamic.setLoadOnStartup(0);
 
         } catch (Exception e) {
-            throw new ServletException(e);
+            throw new ServletErrorException(e);
         }
 
     }

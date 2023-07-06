@@ -16,6 +16,9 @@ public class Dispatcher {
     private RequestMethod requestMethod;
     private Method method;
     private Param[] params;
+    private boolean isVoid;
+    private boolean isRest;
+    private boolean isResponseBody;
 
     public boolean support(String url, RequestMethod requestMethod) {
         return this.requestMethod == requestMethod && this.urlPattern.matcher(url).matches();
@@ -59,5 +62,29 @@ public class Dispatcher {
 
     public void setParams(Param[] params) {
         this.params = params;
+    }
+
+    public boolean isVoid() {
+        return isVoid;
+    }
+
+    public void setVoid(boolean aVoid) {
+        isVoid = aVoid;
+    }
+
+    public boolean isRest() {
+        return isRest;
+    }
+
+    public void setRest(boolean rest) {
+        isRest = rest;
+    }
+
+    public boolean isResponseBody() {
+        return isResponseBody;
+    }
+
+    public void setResponseBody(boolean responseBody) {
+        isResponseBody = responseBody;
     }
 }

@@ -17,6 +17,10 @@ public class Param {
      * 参数类型
      */
     private Class<?> clazz;
+    /**
+     * 默认值
+     */
+    private String defaultValue;
 
     public String getName() {
         return name;
@@ -41,5 +45,13 @@ public class Param {
 
     public void setParamType(ParamType paramType) {
         this.paramType = paramType;
+    }
+
+    public String getDefaultValue() {
+        return defaultValue;
+    }
+
+    public void setDefaultValue(String defaultValue) {
+        this.defaultValue = defaultValue;
     }
 }
