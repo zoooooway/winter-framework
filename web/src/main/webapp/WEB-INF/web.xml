@@ -4,7 +4,7 @@
 
 	<context-param>
 		<param-name>configuration</param-name>
-		<param-value>org.hzw.winter.web.WebAppConfig</param-value>
+		<param-value>org.hzw.winter.web.WebMvcConfiguration</param-value>
 	</context-param>
 
 	<listener>

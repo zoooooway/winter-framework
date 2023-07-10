@@ -13,9 +13,6 @@
     <artifactId>jdbc</artifactId>
 
     <properties>
-        <maven.compiler.source>11</maven.compiler.source>
-        <maven.compiler.target>11</maven.compiler.target>
-
         <sqlite-jdbc.version>3.42.0.0</sqlite-jdbc.version>
         <HikariCP.version>5.0.1</HikariCP.version>
     </properties>

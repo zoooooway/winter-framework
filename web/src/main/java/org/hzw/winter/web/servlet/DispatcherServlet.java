@@ -8,7 +8,9 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import org.hzw.winter.context.bean.AnnotationConfigApplicationContext;
 import org.hzw.winter.context.bean.ApplicationContext;
+import org.hzw.winter.context.property.PropertyResolver;
 import org.hzw.winter.context.util.ClassUtils;
 import org.hzw.winter.context.util.StringUtils;
 import org.hzw.winter.web.PathUtils;
@@ -28,10 +30,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintWriter;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -44,23 +48,52 @@ import java.util.regex.Pattern;
  *
  * @author hzw
  */
-public class DispatchServlet extends HttpServlet {
+public class DispatcherServlet extends HttpServlet {
     Logger log = LoggerFactory.getLogger(this.getClass());
 
+    static final String APP_CONFIG_YAML = "application.yml";
+    static final String APP_CONFIG_PROP = "application.properties";
+
     final ApplicationContext context;
-    final ViewResolver viewResolver;
+    final PropertyResolver propertyResolver;
+    ViewResolver viewResolver;
+    String resourcePath;
+    String faviconPath;
+
     List<Dispatcher> getDispatchers = new ArrayList<>();
     List<Dispatcher> postDispatches = new ArrayList<>();
     List<Dispatcher> putDispatches = new ArrayList<>();
     List<Dispatcher> delDispatches = new ArrayList<>();
 
-    public DispatchServlet(ApplicationContext context, ViewResolver viewResolver) {
+    public DispatcherServlet(ApplicationContext context, PropertyResolver propertyResolver) {
         this.context = context;
-        this.viewResolver = viewResolver;
+        this.propertyResolver = propertyResolver;
+    }
+
+
+    public static DispatcherServlet createDispatchServlet(String configClassName) {
+        try {
+            ClassLoader classLoader = ClassUtils.getContextClassLoader();
+            URL resource = classLoader.getResource(APP_CONFIG_YAML);
+            PropertyResolver resolver;
+            if (resource != null) {
+                resolver = PropertyResolver.create(APP_CONFIG_YAML);
+            } else {
+                resolver = PropertyResolver.create(APP_CONFIG_PROP);
+            }
+            return new DispatcherServlet(new AnnotationConfigApplicationContext(Class.forName(configClassName), resolver), resolver);
+        } catch (Exception e) {
+            throw new ServletErrorException(e);
+        }
     }
 
     @Override
     public void init() throws ServletException {
+        this.viewResolver = context.getBean("freeMarkerViewResolver", ViewResolver.class);
+        // 初始化静态路径
+        this.resourcePath = this.propertyResolver.getProperty("${winter.web.static-path:/static/}", String.class);
+        this.faviconPath = this.propertyResolver.getProperty("${winter.web.favicon-path:/favicon.ico}", String.class);
+
         // 找到所有Controller
         List<Object> beans = context.getBeans(Object.class);
 
@@ -84,15 +117,6 @@ public class DispatchServlet extends HttpServlet {
 
     @Nonnull
     private void findMappingMethod(Object bean, String basePath) throws ServletException {
-        // 处理一下路径，使其以斜杠开头和结尾，形如 /xx/xx/
-//        if (!basePath.startsWith("/")) {
-//            basePath = "/" + basePath;
-//        }
-//        if (!basePath.endsWith("/")) {
-//            basePath = basePath + "/";
-//        }
-
-        String contextPath = this.getServletContext().getContextPath();
         Method[] methods = bean.getClass().getMethods();
         for (Method method : methods) {
             Dispatcher dispatcher = new Dispatcher();
@@ -102,38 +126,37 @@ public class DispatchServlet extends HttpServlet {
             GetMapping get = ClassUtils.findAnnotation(method, GetMapping.class);
             if (get != null) {
                 dispatcher.setRequestMethod(RequestMethod.GET);
-                dispatcher.setUrlPattern(getPattern(contextPath, basePath, get.value()));
-                dispatcher.setParams(getParams(method));
-                getDispatchers.add(dispatcher);
+                addDispatcher(getDispatchers, dispatcher, method, basePath, get.value());
                 continue;
             }
 
             PostMapping post = ClassUtils.findAnnotation(method, PostMapping.class);
             if (post != null) {
                 dispatcher.setRequestMethod(RequestMethod.POST);
-                dispatcher.setUrlPattern(getPattern(contextPath, basePath, post.value()));
-                dispatcher.setParams(getParams(method));
-                postDispatches.add(dispatcher);
+                addDispatcher(getDispatchers, dispatcher, method, basePath, post.value());
                 continue;
             }
 
             PutMapping put = ClassUtils.findAnnotation(method, PutMapping.class);
             if (put != null) {
                 dispatcher.setRequestMethod(RequestMethod.PUT);
-                dispatcher.setUrlPattern(getPattern(contextPath, basePath, put.value()));
-                dispatcher.setParams(getParams(method));
-                putDispatches.add(dispatcher);
+                addDispatcher(getDispatchers, dispatcher, method, basePath, put.value());
                 continue;
             }
 
             DeleteMapping del = ClassUtils.findAnnotation(method, DeleteMapping.class);
             if (del != null) {
                 dispatcher.setRequestMethod(RequestMethod.DELETE);
-                dispatcher.setUrlPattern(getPattern(contextPath, basePath, del.value()));
-                dispatcher.setParams(getParams(method));
-                delDispatches.add(dispatcher);
+                addDispatcher(getDispatchers, dispatcher, method, basePath, del.value());
             }
         }
+    }
+
+    private void addDispatcher(List<Dispatcher> dispatchers, Dispatcher dispatcher, Method method, String... paths) throws ServletException {
+        dispatcher.setUrlPattern(getPattern(paths));
+        dispatcher.setParams(getParams(method));
+        dispatcher.setResponseBody(ClassUtils.findAnnotation(method, ResponseBody.class) != null);
+        dispatchers.add(dispatcher);
     }
 
     @Nonnull
@@ -184,6 +207,10 @@ public class DispatchServlet extends HttpServlet {
                     pt = ParamType.REQUEST_PARAM;
                     try {
                         p.setName((String) anno.getClass().getMethod("value").invoke(anno));
+                        String defaultValue = (String) anno.getClass().getMethod("defaultValue").invoke(anno);
+                        if (StringUtils.isNotEmpty(defaultValue)) {
+                            p.setDefaultValue(defaultValue);
+                        }
                     } catch (Exception e) {
                         throw new ServletException(e);
                     }
@@ -226,7 +253,64 @@ public class DispatchServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
-        for (Dispatcher dispatcher : getDispatchers) {
+        String uri = req.getRequestURI();
+        if (uri.startsWith(this.resourcePath) || uri.startsWith(this.faviconPath)) {
+            handleResource(req, resp);
+        } else {
+            handleService(req, resp, getDispatchers);
+        }
+    }
+
+    @Override
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        handleService(req, resp, postDispatches);
+    }
+
+    @Override
+    protected void doPut(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        handleService(req, resp, putDispatches);
+    }
+
+    @Override
+    protected void doDelete(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        handleService(req, resp, delDispatches);
+    }
+
+
+    private void handleResource(HttpServletRequest req, HttpServletResponse resp) throws ServletException {
+        String uri = req.getRequestURI();
+        ServletContext servletContext = req.getServletContext();
+
+        try (InputStream input = servletContext.getResourceAsStream(uri)) {
+            if (input == null) {
+                // not found:
+                resp.sendError(404, "Not Found");
+                return;
+            }
+
+            int i = uri.lastIndexOf("/");
+            if (i < 0) {
+                return;
+            }
+
+            String file = uri.substring(i + 1);
+            String mimeType = servletContext.getMimeType(file);
+            if (mimeType == null) {
+                mimeType = "application/octet-stream";
+            }
+            resp.setContentType(mimeType);
+
+            try (ServletOutputStream output = resp.getOutputStream()) {
+                input.transferTo(output);
+            }
+
+        } catch (IOException e) {
+            throw new ServletException(e);
+        }
+    }
+
+    private void handleService(HttpServletRequest req, HttpServletResponse resp, List<Dispatcher> dispatchers) throws IOException, ServletException {
+        for (Dispatcher dispatcher : dispatchers) {
             String url = concatPaths(req.getContextPath(), req.getRequestURI());
             if (dispatcher.support(url, RequestMethod.GET)) {
                 Object result = doHandle(req, resp, dispatcher, url);
@@ -386,35 +470,6 @@ public class DispatchServlet extends HttpServlet {
         }
     }
 
-    @Override
-    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        for (Dispatcher dispatcher : postDispatches) {
-            String url = concatPaths(req.getContextPath(), req.getRequestURI());
-            if (dispatcher.support(url, RequestMethod.POST)) {
-                doHandle(req, resp, dispatcher, url);
-            }
-        }
-    }
-
-    @Override
-    protected void doPut(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        for (Dispatcher dispatcher : putDispatches) {
-            String url = concatPaths(req.getContextPath(), req.getRequestURI());
-            if (dispatcher.support(url, RequestMethod.PUT)) {
-                doHandle(req, resp, dispatcher, url);
-            }
-        }
-    }
-
-    @Override
-    protected void doDelete(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        for (Dispatcher dispatcher : delDispatches) {
-            String url = concatPaths(req.getContextPath(), req.getRequestURI());
-            if (dispatcher.support(url, RequestMethod.DELETE)) {
-                doHandle(req, resp, dispatcher, url);
-            }
-        }
-    }
 
     Object convertToType(Class<?> classType, String s) {
         if (classType == String.class) {

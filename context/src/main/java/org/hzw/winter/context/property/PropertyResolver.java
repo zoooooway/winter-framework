@@ -129,7 +129,7 @@ public class PropertyResolver {
 
 
     @Nullable
-    public <T> T getProperty(String key, String defaultValue, Class<T> targetType) {
+    private  <T> T getProperty(String key, String defaultValue, Class<T> targetType) {
         Object property = getProperty(key, targetType);
         if (property != null) {
             return (T) property;
