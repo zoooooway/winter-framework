@@ -21,7 +21,7 @@ public class WebMvcConfiguration {
     }
 
     @Bean
-    public ViewResolver freeMarkerViewResolver(@Value("${winter.servlet.templatePath:/static}") String templatePath,
+    public ViewResolver freeMarkerViewResolver(@Value("${winter.servlet.templatePath:/WEB-INF/templates}") String templatePath,
                                      @Value("winter.servlet.templateEncoding:UTF-8") String templateEncoding) {
         return new FreeMarkerViewResolver(context, templatePath, templateEncoding);
     }
