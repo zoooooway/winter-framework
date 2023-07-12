@@ -21,6 +21,10 @@ public class Param {
      * 默认值
      */
     private String defaultValue;
+    /**
+     * 是否必须有值
+     */
+    private boolean isRequired;
 
     public String getName() {
         return name;
@@ -53,5 +57,13 @@ public class Param {
 
     public void setDefaultValue(String defaultValue) {
         this.defaultValue = defaultValue;
+    }
+
+    public boolean isRequired() {
+        return isRequired;
+    }
+
+    public void setRequired(boolean required) {
+        isRequired = required;
     }
 }

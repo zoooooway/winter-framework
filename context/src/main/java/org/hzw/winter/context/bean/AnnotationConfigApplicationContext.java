@@ -180,10 +180,12 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
                     }
                     property = beanDefinition.getInstance();
 
-                } else if (value != null) {
+                }
+                // Just for clarity
+                else if (value != null) {
                     String key = value.value();
                     Class<?> type = parameters[i].getType();
-                    property = propertyResolver.getProperty(key, type);
+                    property = propertyResolver.getRequiredProperty(key, type);
                 }
 
                 args[i] = property;
@@ -243,7 +245,7 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
             if (value != null) {
                 String key = value.value();
                 Class<?> type = field.getType();
-                Object property = propertyResolver.getProperty(key, type);
+                Object property = propertyResolver.getRequiredProperty(key, type);
 
                 injectProperty(instance, field, property);
             }
@@ -675,7 +677,7 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
 
             } else {
                 // 注入配置属性
-                args[i] = propertyResolver.getProperty(value.value(), parameters[i].getType());
+                args[i] = propertyResolver.getRequiredProperty(value.value(), parameters[i].getType());
             }
         }
 

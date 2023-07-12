@@ -14,10 +14,7 @@ import org.hzw.winter.context.property.PropertyResolver;
 import org.hzw.winter.context.util.ClassUtils;
 import org.hzw.winter.context.util.StringUtils;
 import org.hzw.winter.web.PathUtils;
-import org.hzw.winter.web.exception.MultipleRequestException;
-import org.hzw.winter.web.exception.ResolveParameterException;
-import org.hzw.winter.web.exception.ServletErrorException;
-import org.hzw.winter.web.exception.UnknownRequestException;
+import org.hzw.winter.web.exception.*;
 import org.hzw.winter.web.mvc.Dispatcher;
 import org.hzw.winter.web.mvc.ModelAndView;
 import org.hzw.winter.web.mvc.Param;
@@ -34,12 +31,12 @@ import java.io.InputStream;
 import java.io.PrintWriter;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -61,9 +58,9 @@ public class DispatcherServlet extends HttpServlet {
     String faviconPath;
 
     List<Dispatcher> getDispatchers = new ArrayList<>();
-    List<Dispatcher> postDispatches = new ArrayList<>();
-    List<Dispatcher> putDispatches = new ArrayList<>();
-    List<Dispatcher> delDispatches = new ArrayList<>();
+    List<Dispatcher> postDispatchers = new ArrayList<>();
+    List<Dispatcher> putDispatchers = new ArrayList<>();
+    List<Dispatcher> delDispatchers = new ArrayList<>();
 
     public DispatcherServlet(ApplicationContext context, PropertyResolver propertyResolver) {
         this.context = context;
@@ -98,61 +95,73 @@ public class DispatcherServlet extends HttpServlet {
         List<Object> beans = context.getBeans(Object.class);
 
         for (Object bean : beans) {
+            RestController restController = ClassUtils.findAnnotation(bean.getClass(), RestController.class);
+            if (restController != null) {
+                dealController(bean, true);
+                continue;
+            }
+
             Controller controller = ClassUtils.findAnnotation(bean.getClass(), Controller.class);
             if (controller != null) {
-                RequestMapping requestMapping = ClassUtils.findAnnotation(bean.getClass(), RequestMapping.class);
-                String basePath = null;
-                if (requestMapping != null) {
-                    basePath = requestMapping.value();
-                }
-                if (StringUtils.isEmpty(basePath)) {
-                    basePath = "/";
-                }
-                // 遍历该bean的方法，找到所有处理url的映射方法
-                findMappingMethod(bean, basePath);
-
+                dealController(bean, false);
             }
         }
     }
 
-    @Nonnull
-    private void findMappingMethod(Object bean, String basePath) throws ServletException {
-        Method[] methods = bean.getClass().getMethods();
-        for (Method method : methods) {
-            Dispatcher dispatcher = new Dispatcher();
-            dispatcher.setMethod(method);
-            dispatcher.setController(bean);
+    private void dealController(Object bean, boolean isRest) throws ServletException {
+        RequestMapping requestMapping = ClassUtils.findAnnotation(bean.getClass(), RequestMapping.class);
+        String basePath = null;
+        if (requestMapping != null) {
+            basePath = requestMapping.value();
+        }
+        if (StringUtils.isEmpty(basePath)) {
+            basePath = "/";
+        }
+        // 遍历该bean的方法，找到所有处理url的映射方法
+        collectMappingMethod(isRest, bean, basePath);
+    }
 
+    @Nonnull
+    private void collectMappingMethod(boolean isRest, Object bean, String basePath) throws ServletException {
+        Method[] methods = bean.getClass().getDeclaredMethods();
+        for (Method method : methods) {
             GetMapping get = ClassUtils.findAnnotation(method, GetMapping.class);
             if (get != null) {
-                dispatcher.setRequestMethod(RequestMethod.GET);
-                addDispatcher(getDispatchers, dispatcher, method, basePath, get.value());
+                tryAddDispatcher(getDispatchers, isRest, bean, RequestMethod.GET, method, basePath, get.value());
                 continue;
             }
 
             PostMapping post = ClassUtils.findAnnotation(method, PostMapping.class);
             if (post != null) {
-                dispatcher.setRequestMethod(RequestMethod.POST);
-                addDispatcher(getDispatchers, dispatcher, method, basePath, post.value());
+                tryAddDispatcher(postDispatchers, isRest, bean, RequestMethod.POST, method, basePath, post.value());
                 continue;
             }
 
             PutMapping put = ClassUtils.findAnnotation(method, PutMapping.class);
             if (put != null) {
-                dispatcher.setRequestMethod(RequestMethod.PUT);
-                addDispatcher(getDispatchers, dispatcher, method, basePath, put.value());
+                tryAddDispatcher(putDispatchers, isRest, bean, RequestMethod.PUT, method, basePath, put.value());
                 continue;
             }
 
             DeleteMapping del = ClassUtils.findAnnotation(method, DeleteMapping.class);
             if (del != null) {
-                dispatcher.setRequestMethod(RequestMethod.DELETE);
-                addDispatcher(getDispatchers, dispatcher, method, basePath, del.value());
+                tryAddDispatcher(delDispatchers, isRest, bean, RequestMethod.DELETE, method, basePath, del.value());
             }
         }
     }
 
-    private void addDispatcher(List<Dispatcher> dispatchers, Dispatcher dispatcher, Method method, String... paths) throws ServletException {
+    private void tryAddDispatcher(List<Dispatcher> dispatchers, boolean isRest, Object bean, RequestMethod requestMethod, Method method, String... paths) throws ServletException {
+        // check method before add
+        if (Modifier.isStatic(method.getModifiers())) {
+            throw new ServletErrorException(String.format("Can not mapping an URL by static method: %s", method.getName()));
+        }
+        method.setAccessible(true);
+
+        Dispatcher dispatcher = new Dispatcher();
+        dispatcher.setRest(isRest);
+        dispatcher.setController(bean);
+        dispatcher.setRequestMethod(requestMethod);
+        dispatcher.setMethod(method);
         dispatcher.setUrlPattern(getPattern(paths));
         dispatcher.setParams(getParams(method));
         dispatcher.setResponseBody(ClassUtils.findAnnotation(method, ResponseBody.class) != null);
@@ -207,6 +216,7 @@ public class DispatcherServlet extends HttpServlet {
                     pt = ParamType.REQUEST_PARAM;
                     try {
                         p.setName((String) anno.getClass().getMethod("value").invoke(anno));
+                        p.setRequired((boolean) anno.getClass().getMethod("required").invoke(anno));
                         String defaultValue = (String) anno.getClass().getMethod("defaultValue").invoke(anno);
                         if (StringUtils.isNotEmpty(defaultValue)) {
                             p.setDefaultValue(defaultValue);
@@ -263,17 +273,17 @@ public class DispatcherServlet extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        handleService(req, resp, postDispatches);
+        handleService(req, resp, postDispatchers);
     }
 
     @Override
     protected void doPut(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        handleService(req, resp, putDispatches);
+        handleService(req, resp, putDispatchers);
     }
 
     @Override
     protected void doDelete(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        handleService(req, resp, delDispatches);
+        handleService(req, resp, delDispatchers);
     }
 
 
@@ -310,98 +320,138 @@ public class DispatcherServlet extends HttpServlet {
     }
 
     private void handleService(HttpServletRequest req, HttpServletResponse resp, List<Dispatcher> dispatchers) throws IOException, ServletException {
-        for (Dispatcher dispatcher : dispatchers) {
-            String url = concatPaths(req.getContextPath(), req.getRequestURI());
-            if (dispatcher.support(url, RequestMethod.GET)) {
-                Object result = doHandle(req, resp, dispatcher, url);
-                if (dispatcher.isVoid() || result == null) {
+        try {
+            String url = req.getRequestURI();
+            for (Dispatcher dispatcher : dispatchers) {
+                Matcher matcher = dispatcher.getUrlPattern().matcher(url);
+                if (matcher.matches()) {
+                    Object result = doHandle(req, resp, dispatcher, matcher);
+                    processResult(req, resp, dispatcher, result);
                     return;
                 }
+            }
 
-                // 将结果写入响应
-                if (dispatcher.isRest()) {
-                    // 以json格式传输
-                    if (resp.isCommitted()) {
-                        resp.setContentType("application/json;charset=UTF-8");
+            // not found:
+            resp.sendError(404, "Not Found");
+        } catch (BadRequestException e) {
+            log.warn("process request failed with status " + 400 + " : " + req.getRequestURI(), e);
+            if (!resp.isCommitted()) {
+                resp.resetBuffer();
+                resp.sendError(400);
+            }
+        } catch (RuntimeException | ServletException | IOException e) {
+            log.warn("process request failed: " + req.getRequestURI(), e);
+            throw e;
+        } catch (Exception e) {
+            log.warn("process request failed: " + req.getRequestURI(), e);
+            throw new ServletErrorException(e);
+        }
+
+    }
+
+    private void processResult(HttpServletRequest req, HttpServletResponse resp, Dispatcher dispatcher, Object
+            result) throws IOException, ServletException {
+        if (dispatcher.isVoid() || result == null) {
+            return;
+        }
+
+        // 将结果写入响应
+        if (dispatcher.isRest()) {
+            // 以json格式传输
+            if (!resp.isCommitted()) {
+                resp.setContentType("application/json;charset=UTF-8");
+            }
+
+            if (result instanceof String) {
+                try (PrintWriter writer = resp.getWriter()) {
+                    writer.write((String) result);
+                    writer.flush();
+                }
+
+            } else if (result instanceof byte[]) {
+                try (ServletOutputStream os = resp.getOutputStream()) {
+                    os.write((byte[]) result);
+                    os.flush();
+                }
+
+            } else {
+                try (PrintWriter writer = resp.getWriter()) {
+                    JsonUtils.writeJson(writer, result);
+                }
+            }
+
+        } else {
+            // 以视图形式传输
+            if (!resp.isCommitted()) {
+                resp.setContentType("text/html;charset=UTF-8");
+            }
+
+            // 获取视图解析器
+            if (result instanceof ModelAndView) {
+                String viewName = ((ModelAndView) result).getViewName();
+                if (viewName.startsWith("redirect:")) {
+                    // send redirect:
+                    resp.sendRedirect(viewName.substring(9));
+                } else {
+                    this.viewResolver.render(viewName, ((ModelAndView) result).getModel(), req, resp);
+                }
+
+
+            } else if (result instanceof String) {
+                if (dispatcher.isResponseBody()) {
+                    try (PrintWriter pw = resp.getWriter();) {
+                        pw.write((String) result);
+                        pw.flush();
                     }
 
-                    if (result instanceof String) {
-                        try (PrintWriter writer = resp.getWriter()) {
-                            writer.write((String) result);
-                            writer.flush();
-                        }
+                } else if (((String) result).startsWith("redirect:")) {
+                    // send redirect:
+                    resp.sendRedirect(((String) result).substring(9));
 
-                    } else if (result instanceof byte[]) {
-                        try (ServletOutputStream os = resp.getOutputStream()) {
-                            os.write((byte[]) result);
-                            os.flush();
-                        }
+                } else {
+                    // 字符串情况下没有@ResponseBody不支持直接返回
+                    throw new ServletException("Unable to process String result when handle url: " + req.getRequestURI());
+                }
 
-                    } else {
-                        try (PrintWriter writer = resp.getWriter()) {
-                            JsonUtils.writeJson(writer, result);
-                        }
+            } else if (result instanceof byte[]) {
+                if (dispatcher.isResponseBody()) {
+                    try (ServletOutputStream os = resp.getOutputStream()) {
+                        os.write((byte[]) result);
+                        os.flush();
                     }
 
                 } else {
-                    // 以视图形式传输
-                    if (resp.isCommitted()) {
-                        resp.setContentType("text/html;charset=UTF-8");
-                    }
-
-                    // 获取视图解析器
-                    if (result instanceof ModelAndView) {
-                        String viewName = ((ModelAndView) result).getViewName();
-                        viewResolver.render(viewName, ((ModelAndView) result).getModel(), req, resp);
-
-                    } else if (result instanceof String) {
-                        if (dispatcher.isResponseBody()) {
-                            try (PrintWriter pw = resp.getWriter();) {
-                                pw.write((String) result);
-                                pw.flush();
-                            }
-
-                        } else if (((String) result).startsWith("redirect:")) {
-                            // send redirect:
-                            resp.sendRedirect(((String) result).substring(9));
-
-                        } else {
-                            // 字符串情况下没有@ResponseBody不支持直接返回
-                            throw new ServletException("Unable to process String result when handle url: " + url);
-                        }
-
-                    } else if (result instanceof byte[]) {
-                        if (dispatcher.isResponseBody()) {
-                            try (ServletOutputStream os = resp.getOutputStream()) {
-                                os.write((byte[]) result);
-                                os.flush();
-                            }
-
-                        } else {
-                            // error:
-                            throw new ServletException("Unable to process byte[] result when handle url: " + url);
-                        }
-
-                    } else {
-                        // error:
-                        throw new ServletException(String.format("Unable to process %s result when handle url: %s", result.getClass(), url));
-                    }
-
+                    // error:
+                    throw new ServletException("Unable to process byte[] result when handle url: " + req.getRequestURI());
                 }
 
-                return;
+            } else {
+                // error:
+                throw new ServletException(String.format("Unable to process %s result when handle url: %s", result.getClass(), req.getRequestURI()));
             }
-        }
 
-        // not found:
-        resp.sendError(404, "Not Found");
+        }
     }
 
-    private Object doHandle(HttpServletRequest req, HttpServletResponse resp, Dispatcher dispatcher, String url) throws IOException {
+    private Object doHandle(HttpServletRequest req, HttpServletResponse resp, Dispatcher dispatcher, Matcher
+            matcher) throws IOException {
         // 执行处理
         Object controller = dispatcher.getController();
         Method method = dispatcher.getMethod();
         log.debug("Processing request by {}.{}()", controller.getClass(), method.getName());
+        Object[] parameters = resolveParamters(req, resp, dispatcher, matcher, method);
+
+        try {
+            Object invoke = method.invoke(controller, parameters);
+            log.debug("Processing {} completed.", req.getRequestURI());
+            return invoke;
+        } catch (Exception e) {
+            throw new ServletErrorException(e);
+        }
+    }
+
+    private Object[] resolveParamters(HttpServletRequest req, HttpServletResponse resp, Dispatcher
+            dispatcher, Matcher matcher, Method method) throws IOException {
         // 注入参数
         Param[] params = dispatcher.getParams();
         Object[] parameters = new Object[params.length];
@@ -411,25 +461,22 @@ public class DispatcherServlet extends HttpServlet {
             switch (paramType) {
                 case PATH_VARIABLE:
                     // 从url路径中获取参数
-                    Matcher matcher = dispatcher.getUrlPattern().matcher(url);
                     String group = matcher.group(param.getName());
                     parameters[i] = convertToType(param.getClazz(), group);
                     break;
 
                 case REQUEST_PARAM:
-                    Map<String, String[]> parameterMap = req.getParameterMap();
                     String name = param.getName();
-                    String[] values = parameterMap.get(name);
-                    if (values == null) {
-                        if (StringUtils.isNotEmpty(param.getDefaultValue())) {
-                            parameters[i] = convertToType(param.getClazz(), param.getDefaultValue());
+                    String parameter = req.getParameter(name);
+                    if (parameter == null) {
+                        String defaultValue = param.getDefaultValue();
+                        if (defaultValue != null) {
+                            parameter = defaultValue;
+                        } else {
+                            throw new ResolveParameterException("Request parameter '" + name + "' not found.");
                         }
-                    } else if (values.length == 1) {
-                        parameters[i] = convertToType(param.getClazz(), values[0]);
-                    } else {
-                        throw new ResolveParameterException(String.format("Only support resolve for single parameter but multiple parameters found. method: '%s', param: '%s'", method, param.getClazz()));
                     }
-
+                    parameters[i] = convertToType(param.getClazz(), parameter);
                     break;
 
                 case REQUEST_BODY:
@@ -460,14 +507,7 @@ public class DispatcherServlet extends HttpServlet {
         if (log.isDebugEnabled()) {
             log.debug("Resolve parameters: {}", Arrays.toString(parameters));
         }
-
-        try {
-            Object invoke = method.invoke(controller, parameters);
-            log.debug("Processing {} completed.", url);
-            return invoke;
-        } catch (Exception e) {
-            throw new ServletErrorException(e);
-        }
+        return parameters;
     }
 
 

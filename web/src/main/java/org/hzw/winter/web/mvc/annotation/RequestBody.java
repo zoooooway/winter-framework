@@ -8,7 +8,7 @@ import java.lang.annotation.*;
  * @author hzw
  */
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.TYPE, ElementType.METHOD})
+@Target({ElementType.PARAMETER})
 @Documented
 public @interface RequestBody {
 }

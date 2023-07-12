@@ -20,9 +20,9 @@ public class WebMvcConfiguration {
         context = servletContext;
     }
 
-    @Bean
+    @Bean(initMethod = "init")
     public ViewResolver freeMarkerViewResolver(@Value("${winter.servlet.templatePath:/WEB-INF/templates}") String templatePath,
-                                     @Value("winter.servlet.templateEncoding:UTF-8") String templateEncoding) {
+                                     @Value("${winter.servlet.templateEncoding:UTF-8}") String templateEncoding) {
         return new FreeMarkerViewResolver(context, templatePath, templateEncoding);
     }
 

@@ -110,7 +110,7 @@ public class PropertyResolver {
     public <T> T getProperty(String key, Class<T> targetType) {
         PropertyExpr propertyExpr = parsePropertyExpr(key);
         if (propertyExpr == null) {
-            String val = properties.get(key);
+            String val = getProperty(key);
             if (val == null) {
                 return null;
             }
@@ -118,18 +118,29 @@ public class PropertyResolver {
             return (T) convertFunc.apply(val);
         }
 
-        String value = properties.getOrDefault(propertyExpr.getKey(), propertyExpr.getDefaultValue());
+        String value = this.properties.getOrDefault(propertyExpr.getKey(), propertyExpr.getDefaultValue());
         if (value != null) {
             // 也许包含嵌套表达式, 比如: "${a.b:${c.d:e}}"
             return parseValue(value, targetType);
         }
-
         return null;
     }
 
 
+    @Nonnull
+    private String getProperty(String key) {
+        return this.properties.get(key);
+    }
+
+    @Nonnull
+    public <T> T getRequiredProperty(String key, Class<T> targetType) {
+        T property = getProperty(key, targetType);
+
+        return Objects.requireNonNull(property, "Property '" + key + "' not found.");
+    }
+
     @Nullable
-    private  <T> T getProperty(String key, String defaultValue, Class<T> targetType) {
+    private <T> T getProperty(String key, String defaultValue, Class<T> targetType) {
         Object property = getProperty(key, targetType);
         if (property != null) {
             return (T) property;

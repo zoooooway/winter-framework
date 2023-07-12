@@ -20,8 +20,8 @@ public class Dispatcher {
     private boolean isRest;
     private boolean isResponseBody;
 
-    public boolean support(String url, RequestMethod requestMethod) {
-        return this.requestMethod == requestMethod && this.urlPattern.matcher(url).matches();
+    public boolean support(String url) {
+        return this.urlPattern.matcher(url).matches();
     }
 
     public Pattern getUrlPattern() {
