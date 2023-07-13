@@ -3,7 +3,7 @@ package org.hzw.winter.web.exception;
 /**
  * @author hzw
  */
-public class MultipleRequestException extends RuntimeException{
+public class MultipleRequestException extends ServletErrorException {
     public MultipleRequestException() {
         super();
     }

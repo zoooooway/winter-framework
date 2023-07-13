@@ -3,7 +3,7 @@ package org.hzw.winter.web.exception;
 /**
  * @author hzw
  */
-public class UnknownRequestException extends RuntimeException {
+public class UnknownRequestException extends BadRequestException {
     public UnknownRequestException() {
         super();
     }
