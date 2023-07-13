@@ -5,7 +5,7 @@
     <parent>
         <artifactId>parent</artifactId>
         <groupId>org.hzw.winter</groupId>
-        <version>${winter.version}</version>
+        <version>1.0</version>
         <relativePath>../parent/pom.xml</relativePath>
     </parent>
 

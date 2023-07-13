@@ -307,6 +307,7 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
      * @throws IOException
      * @throws URISyntaxException
      */
+    @Nonnull
     private Set<String> scanForClassNames(Class<?> configClass) throws IOException, URISyntaxException {
         // 获取扫描路径
         ComponentScan componentScan = configClass.getAnnotation(ComponentScan.class);
@@ -327,6 +328,19 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
             });
             classNameSet.addAll(scan);
         }
+
+        // 加入@Import指定的class
+        Import importAnno = configClass.getAnnotation(Import.class);
+        if (importAnno != null) {
+            Class<?>[] clazzs = importAnno.value();
+            for (Class<?> clazz : clazzs) {
+                String className = clazz.getName();
+                if (!classNameSet.add(className)) {
+                    log.warn("class {} has been scanned", className);
+                }
+            }
+        }
+
         if (log.isDebugEnabled()) {
             classNameSet.forEach((className) -> log.debug("class found by component scan: {}", className));
         }
@@ -633,7 +647,7 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
             Autowired autowired = parameters[i].getDeclaredAnnotation(Autowired.class);
             Value value = parameters[i].getDeclaredAnnotation(Value.class);
 
-            // 简化：如果当前要创建的bean被@Configuration所修饰，那么禁止其在构造函数中使用@Autowired或者@Autowired注入属性。注入属性只允许字段或Setter以减少复杂度
+            // 简化：如果当前要创建的bean被@Configuration所修饰，那么禁止其在构造函数中使用@Autowired或者@Value注入属性。注入属性只允许字段或Setter以减少复杂度
             if (isConfiguration(bdf) && (autowired != null || value != null)) {
                 throw new BeanCreationException(String.format("Using @Autowired or @Value in the constructor of beans marked with @Configuration is not supported '%s': %s.", bdf.getName(), bdf.getBeanClass().getName()));
             }

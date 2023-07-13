@@ -6,7 +6,7 @@
 
     <groupId>org.hzw.winter</groupId>
     <artifactId>parent</artifactId>
-    <version>${winter.version}</version>
+    <version>1.0</version>
     <packaging>pom</packaging>
 
     <modules>
@@ -21,10 +21,15 @@
         <maven.compiler.target>17</maven.compiler.target>
         <winter.version>1.0</winter.version>
 
+        <junit-bom.version>5.9.2</junit-bom.version>
+        <slf4j-api.version>2.0.7</slf4j-api.version>
+        <logback-classic.version>1.4.6</logback-classic.version>
         <jackson.version>2.14.2</jackson.version>
         <freemarker.version>2.3.32</freemarker.version>
         <javax.annotation.version>1.3.2</javax.annotation.version>
         <javax.servlet.version>4.0.1</javax.servlet.version>
+        <jakarta.annotation.version>2.1.1</jakarta.annotation.version>
+        <snakeyyaml.version>2.0</snakeyyaml.version>
     </properties>
 
     <dependencyManagement>
@@ -44,7 +49,7 @@
             <dependency>
                 <groupId>org.junit</groupId>
                 <artifactId>junit-bom</artifactId>
-                <version>5.9.2</version>
+                <version>${junit-bom.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -52,26 +57,26 @@
             <dependency>
                 <groupId>org.slf4j</groupId>
                 <artifactId>slf4j-api</artifactId>
-                <version>2.0.7</version>
+                <version>${slf4j-api.version}</version>
             </dependency>
 
             <dependency>
                 <groupId>ch.qos.logback</groupId>
                 <artifactId>logback-classic</artifactId>
-                <version>1.4.6</version>
+                <version>${logback-classic.version}</version>
             </dependency>
 
             <!-- https://mvnrepository.com/artifact/org.yaml/snakeyaml -->
             <dependency>
                 <groupId>org.yaml</groupId>
                 <artifactId>snakeyaml</artifactId>
-                <version>2.0</version>
+                <version>${snakeyyaml.version}</version>
             </dependency>
 
             <dependency>
                 <groupId>jakarta.annotation</groupId>
                 <artifactId>jakarta.annotation-api</artifactId>
-                <version>2.1.1</version>
+                <version>${jakarta.annotation.version}</version>
             </dependency>
 
             <!-- https://mvnrepository.com/artifact/javax.annotation/javax.annotation-api -->

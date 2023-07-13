@@ -27,7 +27,7 @@ public class JdbcTemplate {
 
     @SuppressWarnings("unchecked")
     @Nonnull
-    public <T> T queryForObject(String sql, Class<T> clazz, Object... args) throws NoSuchMethodException {
+    public <T> T queryForObject(String sql, Class<T> clazz, Object... args) {
         if (String.class == clazz) {
             return (T) queryForObject(sql, StringRowMapper.INSTANCE, args);
         }
@@ -43,7 +43,7 @@ public class JdbcTemplate {
 
     @SuppressWarnings("unchecked")
     @Nonnull
-    public <T> List<T> queryForList(String sql, Class<T> clazz, Object... args) throws NoSuchMethodException {
+    public <T> List<T> queryForList(String sql, Class<T> clazz, Object... args) {
         if (String.class == clazz) {
             return (List<T>) queryForList(sql, StringRowMapper.INSTANCE, args);
         }
