@@ -1,6 +1,5 @@
-app:
-  title: Hello Application
-  version: 1.0
+server:
+  port: 9999
 
 winter:
   datasource:

@@ -7,13 +7,7 @@ import org.yaml.snakeyaml.constructor.Constructor;
 import org.yaml.snakeyaml.representer.Representer;
 import org.yaml.snakeyaml.resolver.Resolver;
 
-import java.io.IOException;
 import java.io.InputStream;
-import java.net.URISyntaxException;
-import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
-import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -23,34 +17,19 @@ import java.util.Set;
  */
 public class YamlUtils {
 
-    /**
-     * 加载指定的yaml文件，解析为map
-     *
-     * @param path
-     * @return
-     * @throws IOException
-     * @throws URISyntaxException
-     */
-    public static Map<String, Object> loadYaml(String path) throws IOException, URISyntaxException {
-        URL resource = ClassUtils.getContextClassLoader().getResource(path);
-        if (resource == null) {
-            throw new NoSuchFileException(path);
-        }
-
-        return loadYaml(resource);
-    }
 
     /**
      * 加载指定的yaml文件，解析为map
      *
      * @param path
      * @return
-     * @throws IOException
-     * @throws URISyntaxException
      */
-    public static Map<String, Object> loadYaml(URL path) throws IOException, URISyntaxException {
+    public static Map<String, Object> loadYaml(String path) {
         Yaml yaml = createYaml();
-        Iterable<Object> elements = yaml.loadAll(Files.newInputStream(Path.of(path.toURI())));
+        if (path.startsWith("/")) {
+            path = path.substring(1);
+        }
+        Iterable<Object> elements = yaml.loadAll(ClassUtils.getContextClassLoader().getResourceAsStream(path));
         Map<String, Object> map = new HashMap<>();
         for (Object o : elements) {
             plain(o, "", map);
