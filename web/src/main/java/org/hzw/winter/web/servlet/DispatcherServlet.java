@@ -8,7 +8,6 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
-import org.hzw.winter.context.bean.AnnotationConfigApplicationContext;
 import org.hzw.winter.context.bean.ApplicationContext;
 import org.hzw.winter.context.property.PropertyResolver;
 import org.hzw.winter.context.util.ClassUtils;
@@ -33,7 +32,6 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -48,8 +46,6 @@ import java.util.regex.Pattern;
 public class DispatcherServlet extends HttpServlet {
     Logger log = LoggerFactory.getLogger(this.getClass());
 
-    static final String APP_CONFIG_YAML = "application.yml";
-    static final String APP_CONFIG_PROP = "application.properties";
 
     final ApplicationContext context;
     final PropertyResolver propertyResolver;
@@ -65,23 +61,6 @@ public class DispatcherServlet extends HttpServlet {
     public DispatcherServlet(ApplicationContext context, PropertyResolver propertyResolver) {
         this.context = context;
         this.propertyResolver = propertyResolver;
-    }
-
-
-    public static DispatcherServlet createDispatchServlet(String configClassName) {
-        try {
-            ClassLoader classLoader = ClassUtils.getContextClassLoader();
-            URL resource = classLoader.getResource(APP_CONFIG_YAML);
-            PropertyResolver resolver;
-            if (resource != null) {
-                resolver = PropertyResolver.create(APP_CONFIG_YAML);
-            } else {
-                resolver = PropertyResolver.create(APP_CONFIG_PROP);
-            }
-            return new DispatcherServlet(new AnnotationConfigApplicationContext(Class.forName(configClassName), resolver), resolver);
-        } catch (Exception e) {
-            throw new ServletErrorException(e);
-        }
     }
 
     @Override

@@ -3,7 +3,10 @@ package org.hzw.winter.web.servlet;
 import jakarta.servlet.Servlet;
 import jakarta.servlet.ServletContextEvent;
 import jakarta.servlet.ServletContextListener;
+import org.hzw.winter.context.bean.AnnotationConfigApplicationContext;
 import org.hzw.winter.web.WebMvcConfiguration;
+import org.hzw.winter.web.exception.ServletErrorException;
+import org.hzw.winter.web.util.WebUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,18 +24,19 @@ public class WinterListener implements ServletContextListener {
 
     @Override
     public void contextInitialized(ServletContextEvent sce) {
-        // 初始化IoC容器
         log.debug("create dispatch servlet.");
         WebMvcConfiguration.setContext(sce.getServletContext());
+
+        // 初始化IoC容器
         String configuration = sce.getServletContext().getInitParameter("configuration");
+        AnnotationConfigApplicationContext applicationContext;
+        try {
+            applicationContext = new AnnotationConfigApplicationContext(Class.forName(configuration), WebUtils.createPropertyResolver());
+        } catch (ClassNotFoundException e) {
+            throw new ServletErrorException(e);
+        }
 
-
-        this.dispatchServlet = DispatcherServlet.createDispatchServlet(configuration);
-        var dynamic = sce.getServletContext().addServlet("dispatchServlet", dispatchServlet);
-        dynamic.addMapping("/");
-        dynamic.setLoadOnStartup(0);
-
-
+        WebUtils.registerDispatcherServlet(sce.getServletContext(), applicationContext, WebUtils.createPropertyResolver());
     }
 
 

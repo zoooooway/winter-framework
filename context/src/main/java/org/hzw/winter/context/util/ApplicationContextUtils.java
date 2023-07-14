@@ -2,7 +2,6 @@ package org.hzw.winter.context.util;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import org.hzw.winter.context.bean.AnnotationConfigApplicationContext;
 import org.hzw.winter.context.bean.ApplicationContext;
 
 import java.util.Objects;
@@ -13,8 +12,8 @@ import java.util.Objects;
 public class ApplicationContextUtils {
     private static ApplicationContext applicationContext;
 
-    public static void setApplicationContext(AnnotationConfigApplicationContext annotationConfigApplicationContext) {
-        applicationContext = annotationConfigApplicationContext;
+    public static void setApplicationContext(ApplicationContext applicationContext) {
+        ApplicationContextUtils.applicationContext = applicationContext;
     }
 
     @Nonnull

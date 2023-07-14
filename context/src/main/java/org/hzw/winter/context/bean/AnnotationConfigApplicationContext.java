@@ -35,7 +35,7 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
     protected final PropertyResolver propertyResolver;
     protected final List<BeanPostProcessor> beanPostProcessors;
 
-    public AnnotationConfigApplicationContext(Class<?> configClass, PropertyResolver propertyResolver) throws IOException, URISyntaxException, ClassNotFoundException {
+    public AnnotationConfigApplicationContext(Class<?> configClass, PropertyResolver propertyResolver) {
         // 将context注入工具类中以便在初始化流程中传递使用
         ApplicationContextUtils.setApplicationContext(this);
 
@@ -308,7 +308,7 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
      * @throws URISyntaxException
      */
     @Nonnull
-    private Set<String> scanForClassNames(Class<?> configClass) throws IOException, URISyntaxException {
+    private Set<String> scanForClassNames(Class<?> configClass)  {
         // 获取扫描路径
         ComponentScan componentScan = configClass.getAnnotation(ComponentScan.class);
         String[] packages = componentScan == null || componentScan.value().length == 0 ? new String[]{configClass.getPackageName()} : componentScan.value();
@@ -320,12 +320,17 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
         // 扫描指定路径,找到所有class文件
         for (String pkg : packages) {
             ResourcesResolver resolver = new ResourcesResolver(pkg);
-            List<String> scan = resolver.scan(r -> {
-                if (r.getName().endsWith(".class")) {
-                    return r.getName().substring(0, r.getName().length() - 6);
-                }
-                return null;
-            });
+            List<String> scan = null;
+            try {
+                scan = resolver.scan(r -> {
+                    if (r.getName().endsWith(".class")) {
+                        return r.getName().substring(0, r.getName().length() - 6);
+                    }
+                    return null;
+                });
+            } catch (IOException | URISyntaxException e) {
+                throw new BeanCreationException(e);
+            }
             classNameSet.addAll(scan);
         }
 
@@ -352,11 +357,16 @@ public class AnnotationConfigApplicationContext implements ConfigurableApplicati
      * 根据类名创建对应的BeanDefinition
      */
     @Nonnull
-    private Map<String, BeanDefinition> createBeanDefinition(Set<String> classNameSet) throws ClassNotFoundException {
+    private Map<String, BeanDefinition> createBeanDefinition(Set<String> classNameSet) {
         Map<String, BeanDefinition> name2bdf = new HashMap<>();
         // 遍历这些类文件，找到bean
         for (String name : classNameSet) {
-            Class<?> clazz = Class.forName(name);
+            Class<?> clazz = null;
+            try {
+                clazz = Class.forName(name);
+            } catch (ClassNotFoundException e) {
+                throw new BeanCreationException(e);
+            }
             if (clazz.isAnnotation() || clazz.isEnum() || clazz.isInterface()) {
                 continue;
             }
